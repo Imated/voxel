@@ -2,30 +2,32 @@ mod macros;
 
 use log::*;
 use std::process::abort;
-use std::rc::Rc;
 use std::sync::Arc;
 use wgpu::PresentMode::Mailbox;
 use wgpu::wgt::CommandEncoderDescriptor;
 use wgpu::{
-    Backends, Color, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
-    LoadOp, Operations, PresentMode, Queue, RenderPassColorAttachment, RenderPassDescriptor,
-    RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration, TextureUsages,
-    TextureViewDescriptor, Trace,
+    Backends, BlendState, Color, ColorTargetState, ColorWrites, Device, DeviceDescriptor, Face,
+    Features, FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, LoadOp,
+    MultisampleState, Operations, PipelineCompilationOptions, PipelineLayoutDescriptor,
+    PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, StoreOp,
+    Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, Trace, VertexState,
+    include_wgsl,
 };
 use winit::application::ApplicationHandler;
-use winit::dpi::LogicalSize;
-use winit::event::{KeyEvent, WindowEvent};
+use winit::dpi::{LogicalSize, PhysicalPosition};
+use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 pub struct State {
-    surface: Surface<'static>,
+    window: Arc<Window>,
     device: Device,
     queue: Queue,
     config: SurfaceConfiguration,
-    is_surface_configured: bool,
-    window: Arc<Window>,
+    surface: Surface<'static>,
+    render_pipeline: RenderPipeline,
 }
 
 impl State {
@@ -64,8 +66,10 @@ impl State {
             .find(|format| format.is_srgb())
             .copied()
             .unwrap_or(surface_caps.formats[0]);
+
         assert_ne!(size.width, 0, "Window width or height is zero!");
         assert_ne!(size.height, 0, "Window width or height is zero!");
+
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -81,13 +85,61 @@ impl State {
             view_formats: vec![],
         };
 
+        let shader = device.create_shader_module(include_wgsl!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/res/shaders/default.wgsl"
+        )));
+        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
+
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: PipelineCompilationOptions::default(),
+            },
+            fragment: Some(FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(ColorTargetState {
+                    format: config.format,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                })],
+                compilation_options: PipelineCompilationOptions::default(),
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
+                unclipped_depth: false,
+                polygon_mode: PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
         Ok(Self {
-            surface,
+            window,
             device,
             queue,
             config,
-            is_surface_configured: false,
-            window,
+            surface,
+            render_pipeline,
         })
     }
 
@@ -98,7 +150,6 @@ impl State {
         self.config.width = width;
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
-        self.is_surface_configured = true;
     }
 
     pub fn handle_key(&self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
@@ -108,14 +159,18 @@ impl State {
         }
     }
 
+    pub fn handle_mouse_moved(
+        &self,
+        event_loop: &ActiveEventLoop,
+        device_id: DeviceId,
+        position: PhysicalPosition<f64>,
+    ) {
+    }
+
     pub fn update(&mut self) {}
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.window.request_redraw();
-
-        if !self.is_surface_configured {
-            return Ok(());
-        }
 
         let output = self.surface.get_current_texture()?;
         let view = output
@@ -129,7 +184,7 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
-        let render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &view,
@@ -149,6 +204,9 @@ impl State {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
+
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.draw(0..3, 0..1);
 
         drop(render_pass);
 
@@ -214,6 +272,10 @@ impl ApplicationHandler for App {
                     },
                 ..
             } => state.handle_key(event_loop, code, key_state.is_pressed()),
+            WindowEvent::CursorMoved {
+                device_id,
+                position,
+            } => state.handle_mouse_moved(event_loop, device_id, position),
             _ => {}
         }
     }

@@ -1,5 +1,8 @@
 use bytemuck::{Pod, Zeroable};
-use wgpu::{vertex_attr_array, BufferAddress, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
+use wgpu::{
+    BufferAddress, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
+    vertex_attr_array,
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -9,7 +12,6 @@ pub struct Vertex {
 }
 
 impl Vertex {
-
     pub(crate) fn desc() -> VertexBufferLayout<'static> {
         const ATTRIBS: [VertexAttribute; 2] = vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 

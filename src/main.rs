@@ -1,7 +1,7 @@
 mod macros;
+mod main_pass;
 mod renderer;
 mod shader;
-mod main_pass;
 mod vertex;
 
 use crate::renderer::Renderer;

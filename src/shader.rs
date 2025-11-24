@@ -1,11 +1,11 @@
+use crate::vertex::Vertex;
 use std::fs;
 use wgpu::{
     BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState, FrontFace,
     MultisampleState, PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor,
     PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor,
-    ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState
+    ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState,
 };
-use crate::vertex::Vertex;
 
 pub struct Shader {
     pub module: ShaderModule,

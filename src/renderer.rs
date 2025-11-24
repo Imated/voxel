@@ -2,9 +2,8 @@ use crate::main_pass::{FrameData, MainRenderPass};
 use std::sync::Arc;
 use wgpu::PresentMode::Mailbox;
 use wgpu::{
-    Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits
-    , PresentMode, Queue,
-    RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
+    Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
+    PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
     TextureViewDescriptor, Trace,
 };
 use winit::window::Window;
@@ -16,7 +15,7 @@ pub struct Renderer {
     config: SurfaceConfiguration,
     surface: Surface<'static>,
 
-    main_pass: MainRenderPass
+    main_pass: MainRenderPass,
 }
 
 impl Renderer {
@@ -82,7 +81,7 @@ impl Renderer {
             queue,
             config,
             surface,
-            main_pass
+            main_pass,
         })
     }
 
@@ -107,9 +106,7 @@ impl Renderer {
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
-        let frame_data = FrameData {
-            color: &view,
-        };
+        let frame_data = FrameData { color: &view };
 
         self.main_pass.record(&mut encoder, &frame_data);
 

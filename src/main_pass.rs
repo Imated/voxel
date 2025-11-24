@@ -1,5 +1,7 @@
-use wgpu::{Color, CommandEncoder, Device, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, SurfaceConfiguration, TextureView};
+use wgpu::{Buffer, BufferUsages, Color, CommandEncoder, Device, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, SurfaceConfiguration, TextureView};
+use wgpu::util::{BufferInitDescriptor, DeviceExt, RenderEncoder};
 use crate::shader::Shader;
+use crate::vertex::Vertex;
 
 pub struct FrameData<'a> {
     pub color: &'a TextureView,
@@ -7,14 +9,33 @@ pub struct FrameData<'a> {
 
 pub struct MainRenderPass {
     default_shader: Shader,
+    vertex_buffer: Buffer,
+    num_vertices: u32,
 }
+
+const TRIANGLE_VERTICES: &[Vertex] = &[
+    Vertex { position: [0.0, 0.5, 0.0], uv: [1.0, 0.0, 0.0] },
+    Vertex { position: [-0.5, -0.5, 0.0], uv: [0.0, 1.0, 0.0] },
+    Vertex { position: [0.5, -0.5, 0.0], uv: [0.0, 0.0, 1.0] },
+];
 
 impl MainRenderPass {
     pub fn new(device: &Device, config: &SurfaceConfiguration) -> anyhow::Result<Self> {
+
         let shader = Shader::new(device, config, "/res/shaders/default.wgsl")?;
 
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(TRIANGLE_VERTICES),
+            usage: BufferUsages::VERTEX,
+        });
+
+        let num_vertices = TRIANGLE_VERTICES.len() as u32;
+
         Ok(Self {
-            default_shader: shader
+            default_shader: shader,
+            vertex_buffer,
+            num_vertices
         })
     }
 
@@ -41,7 +62,10 @@ impl MainRenderPass {
         });
 
         render_pass.set_pipeline(&self.default_shader.pipeline);
-        render_pass.draw(0..3, 0..1);
+
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+
+        render_pass.draw(0..self.num_vertices, 0..1);
 
         drop(render_pass);
     }

@@ -1,5 +1,5 @@
+use crate::main_pass::{FrameData, MainRenderPass};
 use std::sync::Arc;
-use wgpu::wgt::CommandEncoderDescriptor;
 use wgpu::PresentMode::Mailbox;
 use wgpu::{
     Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits
@@ -8,7 +8,6 @@ use wgpu::{
     TextureViewDescriptor, Trace,
 };
 use winit::window::Window;
-use crate::main_pass::{FrameData, MainRenderPass};
 
 pub struct Renderer {
     window: Arc<Window>,

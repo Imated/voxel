@@ -2,6 +2,7 @@ mod macros;
 mod renderer;
 mod shader;
 mod main_pass;
+mod vertex;
 
 use crate::renderer::Renderer;
 use log::*;
@@ -19,7 +20,7 @@ struct App {
 }
 
 impl App {
-    pub fn new(event_loop: &EventLoop<()>) -> Self {
+    pub fn new(_event_loop: &EventLoop<()>) -> Self {
         Self { renderer: None }
     }
 }
@@ -34,9 +35,9 @@ impl App {
 
     pub fn handle_mouse_moved(
         &self,
-        event_loop: &ActiveEventLoop,
-        device_id: DeviceId,
-        position: PhysicalPosition<f64>,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        _position: PhysicalPosition<f64>,
     ) {
     }
 }

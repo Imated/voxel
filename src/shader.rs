@@ -1,12 +1,11 @@
-use log::error;
 use std::fs;
 use wgpu::{
     BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState, FrontFace,
     MultisampleState, PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor,
     PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor,
-    ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState,
-    include_wgsl,
+    ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState
 };
+use crate::vertex::Vertex;
 
 pub struct Shader {
     pub module: ShaderModule,
@@ -33,7 +32,7 @@ impl Shader {
             vertex: VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[],
+                buffers: &[Vertex::desc()],
                 compilation_options: PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {

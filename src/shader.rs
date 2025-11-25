@@ -1,20 +1,22 @@
 use crate::vertex::Vertex;
 use std::fs;
-use wgpu::{
-    BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState, FrontFace,
-    MultisampleState, PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor,
-    PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor,
-    ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState,
-};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState, FrontFace, MultisampleState, PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState};
 
 pub struct Shader {
     pub module: ShaderModule,
     pub layout: PipelineLayout,
     pub pipeline: RenderPipeline,
+    pub bind_group: BindGroup,
 }
 
 impl Shader {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, path: &str) -> anyhow::Result<Self> {
+    pub fn new(
+        device: &Device,
+        config: &SurfaceConfiguration,
+        path: &str,
+        layout: BindGroupLayout,
+        bind_group_descriptor: BindGroupDescriptor,
+    ) -> anyhow::Result<Self> {
         let src = fs::read_to_string(env!("CARGO_MANIFEST_DIR").to_owned() + path)?;
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some(path),
@@ -22,7 +24,7 @@ impl Shader {
         });
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some(path),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&layout],
             push_constant_ranges: &[],
         });
 
@@ -64,10 +66,13 @@ impl Shader {
             cache: None,
         });
 
+        let bind_group = device.create_bind_group(&bind_group_descriptor);
+
         Ok(Self {
             module: shader,
             layout: render_pipeline_layout,
             pipeline: render_pipeline,
+            bind_group
         })
     }
 }

@@ -2,12 +2,14 @@ mod macros;
 mod main_pass;
 mod renderer;
 mod shader;
+mod texture;
 mod vertex;
 
 use crate::renderer::Renderer;
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
+use wgpu::SurfaceError;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
@@ -72,11 +74,19 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
-            WindowEvent::RedrawRequested => {
-                renderer
-                    .render()
-                    .unwrap_or_else(|err| error!("Failed to render! Error: {:?}", err));
-            }
+            WindowEvent::RedrawRequested => match renderer.render() {
+                Ok(_) => {}
+                Err(SurfaceError::Lost) => {}
+                Err(SurfaceError::Outdated) => {}
+                Err(SurfaceError::OutOfMemory) => {
+                    error!("Out of memory!!");
+                    event_loop.exit();
+                }
+                Err(SurfaceError::Timeout) => {
+                    warn!("Surface timed out!");
+                }
+                Err(err) => error!("Failed to render! Error: {:?}", err),
+            },
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {

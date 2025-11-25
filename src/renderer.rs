@@ -1,11 +1,9 @@
 use crate::main_pass::{FrameData, MainRenderPass};
+use anyhow::Error;
 use std::sync::Arc;
 use wgpu::PresentMode::Mailbox;
-use wgpu::{
-    Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
-    PresentMode, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
-    TextureViewDescriptor, Trace,
-};
+use wgpu::{AddressMode, Backends, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, Trace};
+use wgpu::wgt::SamplerDescriptor;
 use winit::window::Window;
 
 pub struct Renderer {
@@ -16,6 +14,7 @@ pub struct Renderer {
     surface: Surface<'static>,
 
     main_pass: MainRenderPass,
+    sampler: Sampler
 }
 
 impl Renderer {
@@ -55,9 +54,6 @@ impl Renderer {
             .copied()
             .unwrap_or(surface_caps.formats[0]);
 
-        assert_ne!(size.width, 0, "Window width or height is zero!");
-        assert_ne!(size.height, 0, "Window width or height is zero!");
-
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -73,6 +69,16 @@ impl Renderer {
             view_formats: vec![],
         };
 
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Nearest,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
+            ..Default::default()
+        });
+
         let main_pass = MainRenderPass::new(&device, &config)?;
 
         Ok(Self {
@@ -82,11 +88,14 @@ impl Renderer {
             config,
             surface,
             main_pass,
+            sampler,
         })
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         if width <= 0 && height <= 0 {
+            self.config.width = width;
+            self.config.height = height;
             return;
         }
         self.config.width = width;
@@ -96,7 +105,11 @@ impl Renderer {
 
     pub fn update(&mut self) {}
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self) -> Result<(), SurfaceError> {
+        if self.config.width <= 0 && self.config.height <= 0 {
+            return Ok(());
+        }
+
         self.window.request_redraw();
 
         let output = self.surface.get_current_texture()?;

@@ -11,3 +11,8 @@ wgpu = "26.0.1"
 anyhow = "1.0.100"
 pollster = "0.4.0"
 bytemuck = { version = "1.24", features = [ "derive" ] }
+
+
+[dependencies.image]
+version = "0.25.9"
+features = ["png", "jpeg"]

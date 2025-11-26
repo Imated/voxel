@@ -1,15 +1,39 @@
 use image::{GenericImageView, ImageReader};
+use wgpu::naga::FastHashMap;
 use wgpu::wgt::{TextureDescriptor, TextureViewDescriptor};
 use wgpu::{
-    Device, Extent3d, Origin3d, Queue, TexelCopyBufferLayout,
-    TexelCopyTextureInfo, TextureAspect, TextureDimension, TextureFormat, TextureUsages,
-    TextureView,
+    Device, Extent3d, Origin3d, Queue, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
+    TextureDimension, TextureFormat, TextureUsages, TextureView,
 };
+use crate::shader::{Shader, ShaderId};
 
-struct Texture {
-    size: Extent3d,
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct TextureId(pub u32);
+
+pub struct Textures {
+    pub textures: FastHashMap<TextureId, Texture>,
+}
+
+impl Textures {
+    pub fn new() -> Self {
+        Self {
+            textures: FastHashMap::default(),
+        }
+    }
+
+    pub fn add(&mut self, id: u32, texture: Texture) {
+        self.textures.insert(TextureId(id), texture);
+    }
+
+    pub fn get(&self, id: u32) -> Option<&Texture> {
+        self.textures.get(&TextureId(id))
+    }
+}
+
+pub struct Texture {
+    pub size: Extent3d,
     data: wgpu::Texture,
-    view: TextureView,
+    pub view: TextureView,
 }
 
 impl Texture {
@@ -28,7 +52,7 @@ impl Texture {
 
         let texture = device.create_texture(&TextureDescriptor {
             label: Some(path),
-            size: size,
+            size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,

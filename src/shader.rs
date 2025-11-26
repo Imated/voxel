@@ -1,12 +1,43 @@
 use crate::vertex::Vertex;
 use std::fs;
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState, FrontFace, MultisampleState, PipelineCompilationOptions, PipelineLayout, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource, SurfaceConfiguration, VertexState};
+use wgpu::{
+    BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState,
+    FrontFace, MultisampleState, PipelineCompilationOptions, PipelineLayout,
+    PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
+    RenderPipelineDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource,
+    SurfaceConfiguration, VertexState,
+};
+use wgpu::naga::FastHashMap;
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ShaderId(pub u32);
+
+pub struct Shaders {
+    pub shaders: FastHashMap<ShaderId, Shader>,
+}
+
+impl Shaders {
+    pub fn new() -> Self {
+        Self {
+            shaders: FastHashMap::default(),
+        }
+    }
+
+    pub fn add(&mut self, id: u32, shader: Shader)  {
+        self.shaders.insert(ShaderId(id), shader);
+    }
+
+    pub fn get(&self, id: u32) -> Option<&Shader>  {
+        self.shaders.get(&ShaderId(id))
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Shader {
     pub module: ShaderModule,
     pub layout: PipelineLayout,
     pub pipeline: RenderPipeline,
-    pub bind_group: BindGroup,
+    pub bind_group_layout: BindGroupLayout,
 }
 
 impl Shader {
@@ -15,7 +46,6 @@ impl Shader {
         config: &SurfaceConfiguration,
         path: &str,
         layout: BindGroupLayout,
-        bind_group_descriptor: BindGroupDescriptor,
     ) -> anyhow::Result<Self> {
         let src = fs::read_to_string(env!("CARGO_MANIFEST_DIR").to_owned() + path)?;
         let shader = device.create_shader_module(ShaderModuleDescriptor {
@@ -66,13 +96,11 @@ impl Shader {
             cache: None,
         });
 
-        let bind_group = device.create_bind_group(&bind_group_descriptor);
-
         Ok(Self {
             module: shader,
             layout: render_pipeline_layout,
             pipeline: render_pipeline,
-            bind_group
+            bind_group_layout: layout,
         })
     }
 }

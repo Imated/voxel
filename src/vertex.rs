@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::{
-    BufferAddress, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
-    vertex_attr_array,
+    vertex_attr_array, BufferAddress, VertexAttribute, VertexBufferLayout,
+    VertexStepMode,
 };
 
 #[repr(C)]

@@ -1,9 +1,13 @@
 use crate::main_pass::{FrameData, MainRenderPass};
-use anyhow::Error;
+use crate::material::Material;
+use crate::render_object::*;
+use crate::shader::{Shader, ShaderId};
+use crate::texture::Texture;
 use std::sync::Arc;
+use wgpu::wgt::{BufferDescriptor, SamplerDescriptor};
 use wgpu::PresentMode::Mailbox;
-use wgpu::{AddressMode, Backends, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, Trace};
-use wgpu::wgt::SamplerDescriptor;
+use wgpu::{AddressMode, Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::window::Window;
 
 pub struct Renderer {
@@ -14,7 +18,9 @@ pub struct Renderer {
     surface: Surface<'static>,
 
     main_pass: MainRenderPass,
-    sampler: Sampler
+    sampler: Sampler,
+
+    render_objects: Vec<RenderObject>,
 }
 
 impl Renderer {
@@ -79,7 +85,7 @@ impl Renderer {
             ..Default::default()
         });
 
-        let main_pass = MainRenderPass::new(&device, &config)?;
+        let main_pass = MainRenderPass::new();
 
         Ok(Self {
             window,
@@ -89,6 +95,7 @@ impl Renderer {
             surface,
             main_pass,
             sampler,
+            render_objects: vec![],
         })
     }
 
@@ -121,12 +128,73 @@ impl Renderer {
 
         let frame_data = FrameData { color: &view };
 
-        self.main_pass.record(&mut encoder, &frame_data);
+        let main_objects: Vec<&RenderObject> = self
+            .render_objects
+            .iter()
+            .filter(|obj| !obj.transparent)
+            .collect(); // pass all non-transparent objects into the main pass.
+
+        self.main_pass
+            .record(&mut encoder, &frame_data, main_objects);
 
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
         output.present();
 
         Ok(())
+    }
+
+    pub fn push_object(&mut self, obj: RenderObject) {
+        self.render_objects.push(obj);
+    }
+
+    pub fn create_shader(&self, path: &str, layout: BindGroupLayout) -> anyhow::Result<Shader> {
+        Shader::new(&self.device, &self.config, path, layout)
+    }
+
+    pub fn create_shader_layout(&self, mut entries: Vec<BindGroupLayoutEntry>) -> BindGroupLayout {
+        entries.push(BindGroupLayoutEntry {
+            binding: entries.len() as u32,
+            visibility: ShaderStages::FRAGMENT,
+            ty: BindingType::Sampler(SamplerBindingType::Filtering),
+            count: None,
+        }); // add universal sampler
+
+        self.device
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: None,
+                entries: &entries,
+            })
+    }
+
+    pub fn create_material(&self, shader: &Shader, id: u32, entries: Vec<BindGroupEntry>) -> Material {
+        let mut entries = entries;
+        entries.push(BindGroupEntry {
+            binding: entries.len() as u32,
+            resource: BindingResource::Sampler(&self.sampler),
+        }); // add universal sampler
+
+        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &shader.bind_group_layout,
+            entries: &entries,
+        });
+
+        Material {
+            shader: ShaderId(id),
+            bind_group,
+        }
+    }
+
+    pub fn load_texture(&self, path: &str) -> anyhow::Result<Texture> {
+        Texture::new(&self.device, &self.queue, path)
+    }
+
+    pub fn create_buffer(&self, contents: &[u8], usage: BufferUsages) -> Buffer {
+        self.device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents,
+            usage,
+        })
     }
 }

@@ -1,29 +1,95 @@
 mod macros;
 mod main_pass;
+mod material;
+mod render_object;
 mod renderer;
 mod shader;
 mod texture;
 mod vertex;
+mod mesh;
 
+use crate::render_object::RenderObject;
 use crate::renderer::Renderer;
+use crate::shader::{Shader, Shaders};
+use crate::texture::{Texture, Textures};
+use crate::vertex::Vertex;
+use anyhow::Error;
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
-use wgpu::SurfaceError;
+use legion::{Resources, World, WorldOptions};
+use wgpu::{BindGroupDescriptor, BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType, BufferUsages, SamplerBindingType, ShaderStages, SurfaceError, TextureSampleType, TextureViewDimension};
+use wgpu::util::BufferInitDescriptor;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+use crate::material::{Materials};
+use crate::mesh::{Mesh, MeshId, Meshes};
+use crate::TextureType::Atlas;
+
+const TRIANGLE_VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [0.0, 0.625, 0.0],
+        uv: [1.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [-0.5, -0.5, 0.0],
+        uv: [0.0, 1.0, 0.0],
+    },
+    Vertex {
+        position: [0.5, -0.5, 0.0],
+        uv: [0.0, 0.0, 1.0],
+    },
+    Vertex {
+        position: [0.0, -0.5, 0.0],
+        uv: [0.0, 0.5, 0.5],
+    },
+    Vertex {
+        position: [-0.25, 0.125, 0.0],
+        uv: [0.5, 0.5, 0.0],
+    },
+    Vertex {
+        position: [0.25, 0.125, 0.0],
+        uv: [0.0, 0.5, 0.0],
+    },
+];
+
+const TRIANGLE_INDICES: &[u16] = &[0, 4, 5, 1, 3, 4, 2, 5, 3];
+
+#[repr(u32)]
+pub enum ShaderType {
+    Opaque = 0,
+}
+
+#[repr(u32)]
+pub enum MeshType {
+    Triangle = 0,
+}
+
+#[repr(u32)]
+pub enum MaterialType {
+    BlockOpaque = 0,
+}
+
+#[repr(u32)]
+pub enum TextureType {
+    Atlas = 0,
+}
 
 struct App {
-    renderer: Option<Renderer>,
+    world: World,
+    resources: Resources,
 }
 
 impl App {
     pub fn new(_event_loop: &EventLoop<()>) -> Self {
-        Self { renderer: None }
+        Self {
+            world: World::default(),
+            resources: Resources::default(),
+        }
     }
 }
 
@@ -42,6 +108,68 @@ impl App {
         _position: PhysicalPosition<f64>,
     ) {
     }
+
+    pub fn load_assets(&mut self) -> anyhow::Result<()> {
+        let mut shaders = self.resources.get_mut::<Shaders>().unwrap();
+        let mut materials = self.resources.get_mut::<Materials>().unwrap();
+        let mut textures = self.resources.get_mut::<Textures>().unwrap();
+        let mut meshes = self.resources.get_mut::<Meshes>().unwrap();
+        let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
+
+        let default_shader_layout = renderer.create_shader_layout(vec![
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Texture {
+                    sample_type: TextureSampleType::Float { filterable: true },
+                    view_dimension: TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+        ]);
+
+        let default_shader = renderer.create_shader("/res/shaders/default.wgsl", default_shader_layout)?;
+        shaders.add(ShaderType::Opaque as u32, default_shader);
+
+        let atlas = renderer.load_texture("/res/textures/atlas.png")?;
+        textures.add(Atlas as u32, atlas);
+
+        let default_material = renderer.create_material(
+            shaders.get(ShaderType::Opaque as u32).unwrap(),
+            ShaderType::Opaque as u32,
+            vec![BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::TextureView(&textures.get(Atlas as u32).unwrap().view),
+            }],
+        );
+        materials.add(MaterialType::BlockOpaque as u32, default_material);
+
+        let vertex_buffer = renderer.create_buffer(bytemuck::cast_slice(TRIANGLE_VERTICES), BufferUsages::VERTEX);
+        let index_buffer = renderer.create_buffer(bytemuck::cast_slice(TRIANGLE_INDICES), BufferUsages::INDEX);
+        let num_indices = TRIANGLE_INDICES.len() as u32;
+
+        meshes.add(MeshType::Triangle as u32, Mesh::new(vertex_buffer, index_buffer, num_indices));
+
+        Ok(())
+    }
+
+    pub fn render(&self) {
+        let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
+
+        match renderer.render() {
+            Ok(_) => {}
+            Err(SurfaceError::Lost) => {}
+            Err(SurfaceError::Outdated) => {}
+            Err(SurfaceError::OutOfMemory) => {
+                fatal!("Out of memory!!");
+            }
+            Err(SurfaceError::Timeout) => {
+                warn!("Surface timed out!");
+            }
+            Err(err) => error!("Failed to render! Error: {:?}", err),
+        }
+    }
 }
 
 impl ApplicationHandler for App {
@@ -50,14 +178,16 @@ impl ApplicationHandler for App {
             .with_title("Voxel Engine")
             .with_inner_size(LogicalSize::new(800, 600))
             .with_resizable(true);
-        let window = Arc::new(
-            event_loop
-                .create_window(window_attributes)
-                .unwrap_or_else(|err| fatal!("Failed to create window! Error: {:?}", err)),
-        );
-        let renderer = pollster::block_on(Renderer::new(window))
-            .unwrap_or_else(|err| fatal!("Failed to initialize WGPU! Error: {:?}", err));
-        self.renderer = Some(renderer);
+        let window = Arc::new(event_loop.create_window(window_attributes).unwrap_or_else(|err| fatal!("Failed to create window! Error: {:?}", err)));
+        let renderer = pollster::block_on(Renderer::new(window)).unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
+
+        self.resources.insert(renderer);
+        self.resources.insert(Meshes::new());
+        self.resources.insert(Materials::new());
+        self.resources.insert(Shaders::new());
+        self.resources.insert(Textures::new());
+
+        self.load_assets().unwrap_or_else(|err| fatal!("Failed to load assets! Error: {:?}", err));
     }
 
     fn window_event(
@@ -66,27 +196,13 @@ impl ApplicationHandler for App {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        let renderer = match &mut self.renderer {
-            Some(renderer) => renderer,
-            None => return,
-        };
-
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
-            WindowEvent::RedrawRequested => match renderer.render() {
-                Ok(_) => {}
-                Err(SurfaceError::Lost) => {}
-                Err(SurfaceError::Outdated) => {}
-                Err(SurfaceError::OutOfMemory) => {
-                    error!("Out of memory!!");
-                    event_loop.exit();
-                }
-                Err(SurfaceError::Timeout) => {
-                    warn!("Surface timed out!");
-                }
-                Err(err) => error!("Failed to render! Error: {:?}", err),
-            },
+            WindowEvent::Resized(size) => {
+                let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
+                renderer.resize(size.width, size.height);
+            }
+            WindowEvent::RedrawRequested => self.render(),
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {

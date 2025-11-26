@@ -23,6 +23,6 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.tex_coords, 1.0);
+    return vec4<f32>(in.tex_coords, 0.0, 1.0);
     // return textureSample(albedo_texture, universal_sampler, in.tex_coords);
 }

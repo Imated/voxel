@@ -16,6 +16,7 @@ use wgpu::{
     Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace,
 };
 use winit::window::Window;
+use crate::rendering::vertex::Vertex;
 
 pub struct Renderer {
     window: Arc<Window>,
@@ -144,6 +145,7 @@ impl Renderer {
         self.main_pass
             .record(&mut encoder, &frame_data, main_objects);
 
+        self.render_objects.clear();
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
         output.present();
@@ -205,7 +207,7 @@ impl Renderer {
         })
     }
 
-    pub fn create_mesh(&self, vertices: &[u8], indices: &[u8]) -> Mesh {
+    pub fn create_mesh(&self, vertices: &[Vertex], indices: &[u16]) -> Mesh {
         let vertex_buffer =
             self.create_buffer(bytemuck::cast_slice(vertices), BufferUsages::VERTEX);
         let index_buffer = self.create_buffer(bytemuck::cast_slice(indices), BufferUsages::INDEX);

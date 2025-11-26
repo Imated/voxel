@@ -25,6 +25,7 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+use crate::rendering::render_object::RenderObject;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
@@ -140,8 +141,8 @@ impl App {
         materials.add(MaterialType::BlockOpaque as u32, default_material);
 
         let mesh = renderer.create_mesh(
-            bytemuck::cast_slice(TRIANGLE_VERTICES),
-            bytemuck::cast_slice(TRIANGLE_INDICES),
+            TRIANGLE_VERTICES,
+            TRIANGLE_INDICES,
         );
         meshes.add(MeshType::Triangle as u32, mesh);
 
@@ -150,6 +151,15 @@ impl App {
 
     pub fn render(&self) {
         let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
+        let meshes = self.resources.get::<Meshes>().unwrap();
+        let materials = self.resources.get::<Materials>().unwrap();
+
+        renderer.push_object(RenderObject {
+            mesh: meshes.get(MeshType::Triangle as u32).unwrap().clone(),
+            material: materials.get(MaterialType::BlockOpaque as u32).unwrap().clone(),
+            model_bind_group: None,
+            transparent: false,
+        });
 
         match renderer.render() {
             Ok(_) => {}

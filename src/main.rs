@@ -13,6 +13,7 @@ use legion::{Resources, World, WorldOptions};
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use wgpu::util::BufferInitDescriptor;
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType,
@@ -79,6 +80,8 @@ pub enum TextureType {
 struct App {
     world: World,
     resources: Resources,
+    last_frame_time: Instant,
+    frame_count: u64,
 }
 
 impl App {
@@ -86,6 +89,8 @@ impl App {
         Self {
             world: World::default(),
             resources: Resources::default(),
+            last_frame_time: Instant::now(),
+            frame_count: 0,
         }
     }
 }
@@ -149,7 +154,7 @@ impl App {
         Ok(())
     }
 
-    pub fn render(&self) {
+    pub fn render(&mut self) {
         let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
         let meshes = self.resources.get::<Meshes>().unwrap();
         let materials = self.resources.get::<Materials>().unwrap();
@@ -172,6 +177,16 @@ impl App {
                 warn!("Surface timed out!");
             }
             Err(err) => error!("Failed to render! Error: {:?}", err),
+        }
+
+        self.frame_count += 1;
+        let elapsed = self.last_frame_time.elapsed();
+        if elapsed >= Duration::from_secs(1) {
+            let fps = self.frame_count as f32 / elapsed.as_secs_f32();
+            println!("FPS: {:.1}", fps);
+
+            self.frame_count = 0;
+            self.last_frame_time = Instant::now();
         }
     }
 }

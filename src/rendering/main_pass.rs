@@ -20,7 +20,7 @@ impl MainRenderPass {
         &mut self,
         encoder: &mut CommandEncoder,
         data: &FrameData,
-        objects: Vec<&RenderObject>,
+        objects: &Vec<&RenderObject>,
     ) {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Main Render Pass"),

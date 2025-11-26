@@ -143,7 +143,7 @@ impl Renderer {
             .collect(); // pass all non-transparent objects into the main pass.
 
         self.main_pass
-            .record(&mut encoder, &frame_data, main_objects);
+            .record(&mut encoder, &frame_data, &main_objects);
 
         self.render_objects.clear();
         self.queue.submit([encoder.finish()]);

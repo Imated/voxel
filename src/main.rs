@@ -137,7 +137,6 @@ impl App {
 
         let default_material = renderer.create_material(
             shaders.get(ShaderType::Opaque as u32).unwrap(),
-            ShaderType::Opaque as u32,
             vec![BindGroupEntry {
                 binding: 0,
                 resource: BindingResource::TextureView(&textures.get(Atlas as u32).unwrap().view),

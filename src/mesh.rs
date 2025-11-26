@@ -4,6 +4,7 @@ use wgpu::Buffer;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct MeshId(pub u32);
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Mesh {
     vertices: Buffer,
     indices: Buffer,

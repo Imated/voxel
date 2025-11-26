@@ -1,12 +1,13 @@
-use crate::shader::ShaderId;
+use crate::shader::Shader;
 use wgpu::naga::FastHashMap;
 use wgpu::BindGroup;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct MaterialId(pub u32);
 
-pub struct Material{
-    pub shader: ShaderId,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Material {
+    pub shader: Shader,
     pub bind_group: BindGroup,
 }
 

@@ -167,7 +167,7 @@ impl Renderer {
             })
     }
 
-    pub fn create_material(&self, shader: &Shader, id: u32, entries: Vec<BindGroupEntry>) -> Material {
+    pub fn create_material(&self, shader: &Shader, entries: Vec<BindGroupEntry>) -> Material {
         let mut entries = entries;
         entries.push(BindGroupEntry {
             binding: entries.len() as u32,
@@ -181,7 +181,7 @@ impl Renderer {
         });
 
         Material {
-            shader: ShaderId(id),
+            shader: shader.clone(), // only clones pointer to internal gpu resources
             bind_group,
         }
     }

@@ -1,11 +1,11 @@
+use crate::material::Material;
+use crate::mesh::Mesh;
 use wgpu::BindGroup;
-use crate::material::MaterialId;
-use crate::mesh::MeshId;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderObject {
-    pub mesh: MeshId,
-    pub material: MaterialId,
+    pub mesh: Mesh,
+    pub material: Material,
     pub model_bind_group: Option<BindGroup>,
     pub transparent: bool,
 }

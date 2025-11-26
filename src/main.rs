@@ -1,34 +1,30 @@
 mod macros;
-mod main_pass;
-mod material;
-mod render_object;
-mod renderer;
-mod shader;
-mod texture;
-mod vertex;
-mod mesh;
+mod rendering;
 
-use crate::render_object::RenderObject;
-use crate::renderer::Renderer;
-use crate::shader::{Shader, Shaders};
-use crate::texture::{Texture, Textures};
-use crate::vertex::Vertex;
+use crate::TextureType::Atlas;
+use crate::rendering::material::Materials;
+use crate::rendering::mesh::{Mesh, Meshes};
+use crate::rendering::renderer::Renderer;
+use crate::rendering::shader::Shaders;
+use crate::rendering::texture::Textures;
+use crate::rendering::vertex::Vertex;
 use anyhow::Error;
+use legion::{Resources, World, WorldOptions};
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
-use legion::{Resources, World, WorldOptions};
-use wgpu::{BindGroupDescriptor, BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType, BufferUsages, SamplerBindingType, ShaderStages, SurfaceError, TextureSampleType, TextureViewDimension};
 use wgpu::util::BufferInitDescriptor;
+use wgpu::{
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType,
+    BufferUsages, SamplerBindingType, ShaderStages, SurfaceError, TextureSampleType,
+    TextureViewDimension,
+};
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use crate::material::{Materials};
-use crate::mesh::{Mesh, MeshId, Meshes};
-use crate::TextureType::Atlas;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
@@ -116,20 +112,19 @@ impl App {
         let mut meshes = self.resources.get_mut::<Meshes>().unwrap();
         let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
 
-        let default_shader_layout = renderer.create_shader_layout(vec![
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Texture {
-                    sample_type: TextureSampleType::Float { filterable: true },
-                    view_dimension: TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
+        let default_shader_layout = renderer.create_shader_layout(vec![BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::FRAGMENT,
+            ty: BindingType::Texture {
+                sample_type: TextureSampleType::Float { filterable: true },
+                view_dimension: TextureViewDimension::D2,
+                multisampled: false,
             },
-        ]);
+            count: None,
+        }]);
 
-        let default_shader = renderer.create_shader("/res/shaders/default.wgsl", default_shader_layout)?;
+        let default_shader =
+            renderer.create_shader("/res/shaders/default.wgsl", default_shader_layout)?;
         shaders.add(ShaderType::Opaque as u32, default_shader);
 
         let atlas = renderer.load_texture("/res/textures/atlas.png")?;
@@ -144,11 +139,11 @@ impl App {
         );
         materials.add(MaterialType::BlockOpaque as u32, default_material);
 
-        let vertex_buffer = renderer.create_buffer(bytemuck::cast_slice(TRIANGLE_VERTICES), BufferUsages::VERTEX);
-        let index_buffer = renderer.create_buffer(bytemuck::cast_slice(TRIANGLE_INDICES), BufferUsages::INDEX);
-        let num_indices = TRIANGLE_INDICES.len() as u32;
-
-        meshes.add(MeshType::Triangle as u32, Mesh::new(vertex_buffer, index_buffer, num_indices));
+        let mesh = renderer.create_mesh(
+            bytemuck::cast_slice(TRIANGLE_VERTICES),
+            bytemuck::cast_slice(TRIANGLE_INDICES),
+        );
+        meshes.add(MeshType::Triangle as u32, mesh);
 
         Ok(())
     }
@@ -177,8 +172,13 @@ impl ApplicationHandler for App {
             .with_title("Voxel Engine")
             .with_inner_size(LogicalSize::new(800, 600))
             .with_resizable(true);
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap_or_else(|err| fatal!("Failed to create window! Error: {:?}", err)));
-        let renderer = pollster::block_on(Renderer::new(window)).unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
+        let window = Arc::new(
+            event_loop
+                .create_window(window_attributes)
+                .unwrap_or_else(|err| fatal!("Failed to create window! Error: {:?}", err)),
+        );
+        let renderer = pollster::block_on(Renderer::new(window))
+            .unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
 
         self.resources.insert(renderer);
         self.resources.insert(Meshes::new());
@@ -186,7 +186,8 @@ impl ApplicationHandler for App {
         self.resources.insert(Shaders::new());
         self.resources.insert(Textures::new());
 
-        self.load_assets().unwrap_or_else(|err| fatal!("Failed to load assets! Error: {:?}", err));
+        self.load_assets()
+            .unwrap_or_else(|err| fatal!("Failed to load assets! Error: {:?}", err));
     }
 
     fn window_event(

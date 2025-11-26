@@ -1,6 +1,6 @@
 use crate::shader::Shader;
-use wgpu::naga::FastHashMap;
 use wgpu::BindGroup;
+use wgpu::naga::FastHashMap;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct MaterialId(pub u32);
@@ -22,11 +22,11 @@ impl Materials {
         }
     }
 
-    pub fn add(&mut self, id: u32, mat: Material)  {
+    pub fn add(&mut self, id: u32, mat: Material) {
         self.materials.insert(MaterialId(id), mat);
     }
 
-    pub fn get(&self, id: u32) -> Option<&Material>  {
+    pub fn get(&self, id: u32) -> Option<&Material> {
         self.materials.get(&MaterialId(id))
     }
 }

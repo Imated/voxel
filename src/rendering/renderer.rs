@@ -1,13 +1,20 @@
-use crate::main_pass::{FrameData, MainRenderPass};
-use crate::material::Material;
-use crate::render_object::*;
-use crate::shader::{Shader, ShaderId};
-use crate::texture::Texture;
+use crate::rendering::main_pass::{FrameData, MainRenderPass};
+use crate::rendering::material::Material;
+use crate::rendering::mesh::Mesh;
+use crate::rendering::render_object::*;
+use crate::rendering::shader::Shader;
+use crate::rendering::texture::Texture;
 use std::sync::Arc;
-use wgpu::wgt::{BufferDescriptor, SamplerDescriptor};
 use wgpu::PresentMode::Mailbox;
-use wgpu::{AddressMode, Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::wgt::SamplerDescriptor;
+use wgpu::{
+    AddressMode, Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer,
+    BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor,
+    Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages,
+    Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace,
+};
 use winit::window::Window;
 
 pub struct Renderer {
@@ -196,5 +203,14 @@ impl Renderer {
             contents,
             usage,
         })
+    }
+
+    pub fn create_mesh(&self, vertices: &[u8], indices: &[u8]) -> Mesh {
+        let vertex_buffer =
+            self.create_buffer(bytemuck::cast_slice(vertices), BufferUsages::VERTEX);
+        let index_buffer = self.create_buffer(bytemuck::cast_slice(indices), BufferUsages::INDEX);
+        let num_indices = indices.len() as u32;
+
+        Mesh::new(vertex_buffer, index_buffer, num_indices)
     }
 }

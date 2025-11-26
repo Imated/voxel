@@ -1,22 +1,18 @@
 use crate::render_object::RenderObject;
 use wgpu::{
-    Color, CommandEncoder, LoadOp, Operations,
-    RenderPassColorAttachment, RenderPassDescriptor, StoreOp, TextureView,
+    Color, CommandEncoder, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor,
+    StoreOp, TextureView,
 };
 
 pub struct FrameData<'a> {
     pub color: &'a TextureView,
 }
 
-pub struct MainRenderPass {
-
-}
+pub struct MainRenderPass {}
 
 impl MainRenderPass {
     pub fn new() -> Self {
-        Self {
-
-        }
+        Self {}
     }
 
     pub fn record(

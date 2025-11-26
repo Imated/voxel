@@ -1,5 +1,5 @@
-use wgpu::naga::FastHashMap;
 use wgpu::Buffer;
+use wgpu::naga::FastHashMap;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct MeshId(pub u32);
@@ -36,7 +36,7 @@ impl Meshes {
         self.meshes.insert(MeshId(id), mesh);
     }
 
-    pub fn get(&self, id: u32) -> Option<&Mesh>  {
+    pub fn get(&self, id: u32) -> Option<&Mesh> {
         self.meshes.get(&MeshId(id))
     }
 }

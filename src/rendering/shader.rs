@@ -1,5 +1,6 @@
 use crate::vertex::Vertex;
 use std::fs;
+use wgpu::naga::FastHashMap;
 use wgpu::{
     BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState,
     FrontFace, MultisampleState, PipelineCompilationOptions, PipelineLayout,
@@ -7,7 +8,6 @@ use wgpu::{
     RenderPipelineDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource,
     SurfaceConfiguration, VertexState,
 };
-use wgpu::naga::FastHashMap;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ShaderId(pub u32);
@@ -23,11 +23,11 @@ impl Shaders {
         }
     }
 
-    pub fn add(&mut self, id: u32, shader: Shader)  {
+    pub fn add(&mut self, id: u32, shader: Shader) {
         self.shaders.insert(ShaderId(id), shader);
     }
 
-    pub fn get(&self, id: u32) -> Option<&Shader>  {
+    pub fn get(&self, id: u32) -> Option<&Shader> {
         self.shaders.get(&ShaderId(id))
     }
 }

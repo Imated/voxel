@@ -1,3 +1,4 @@
+use crate::shader::{Shader, ShaderId};
 use image::{GenericImageView, ImageReader};
 use wgpu::naga::FastHashMap;
 use wgpu::wgt::{TextureDescriptor, TextureViewDescriptor};
@@ -5,7 +6,6 @@ use wgpu::{
     Device, Extent3d, Origin3d, Queue, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
     TextureDimension, TextureFormat, TextureUsages, TextureView,
 };
-use crate::shader::{Shader, ShaderId};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TextureId(pub u32);

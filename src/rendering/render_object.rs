@@ -1,5 +1,5 @@
-use crate::material::Material;
-use crate::mesh::Mesh;
+use crate::rendering::material::Material;
+use crate::rendering::mesh::Mesh;
 use wgpu::BindGroup;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

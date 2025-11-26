@@ -1,5 +1,4 @@
-use crate::shader::{Shader, ShaderId};
-use image::{GenericImageView, ImageReader};
+use image::ImageReader;
 use wgpu::naga::FastHashMap;
 use wgpu::wgt::{TextureDescriptor, TextureViewDescriptor};
 use wgpu::{

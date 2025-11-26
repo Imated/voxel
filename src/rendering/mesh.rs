@@ -6,9 +6,9 @@ pub struct MeshId(pub u32);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Mesh {
-    vertices: Buffer,
-    indices: Buffer,
-    num_indices: u32,
+    pub(crate) vertices: Buffer,
+    pub(crate) indices: Buffer,
+    pub(crate) num_indices: u32,
 }
 
 impl Mesh {

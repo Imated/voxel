@@ -1,4 +1,4 @@
-use crate::shader::Shader;
+use crate::rendering::shader::Shader;
 use wgpu::BindGroup;
 use wgpu::naga::FastHashMap;
 

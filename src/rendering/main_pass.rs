@@ -1,7 +1,8 @@
-use crate::render_object::RenderObject;
+use crate::rendering::render_object::RenderObject;
+use wgpu::util::RenderEncoder;
 use wgpu::{
-    Color, CommandEncoder, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor,
-    StoreOp, TextureView,
+    Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment,
+    RenderPassDescriptor, StoreOp, TextureView,
 };
 
 pub struct FrameData<'a> {
@@ -43,13 +44,17 @@ impl MainRenderPass {
         });
 
         for object in objects {
+            let material = &object.material;
+            let shader = &material.shader;
+            let mesh = &object.mesh;
 
-            //render_pass.set_pipeline();
+            render_pass.set_pipeline(&shader.pipeline);
 
-            //render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            //render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &material.bind_group, &[]);
+            render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            render_pass.set_index_buffer(mesh.indices.slice(..), IndexFormat::Uint16);
 
-            //render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.draw_indexed(0..mesh.num_indices, 0, 0..1);
         }
 
         drop(render_pass);

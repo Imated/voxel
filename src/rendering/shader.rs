@@ -1,4 +1,4 @@
-use crate::vertex::Vertex;
+use crate::rendering::vertex::Vertex;
 use std::fs;
 use wgpu::naga::FastHashMap;
 use wgpu::{
@@ -34,10 +34,10 @@ impl Shaders {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Shader {
-    pub module: ShaderModule,
-    pub layout: PipelineLayout,
-    pub pipeline: RenderPipeline,
-    pub bind_group_layout: BindGroupLayout,
+    pub(crate) module: ShaderModule,
+    pub(crate) layout: PipelineLayout,
+    pub(crate) pipeline: RenderPipeline,
+    pub(crate) bind_group_layout: BindGroupLayout,
 }
 
 impl Shader {

@@ -29,27 +29,27 @@ use winit::window::{Window, WindowId};
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
         position: [0.0, 0.625, 0.0],
-        uv: [1.0, 0.0, 0.0],
+        tex_coords: [1.0, 0.0],
     },
     Vertex {
         position: [-0.5, -0.5, 0.0],
-        uv: [0.0, 1.0, 0.0],
+        tex_coords: [0.0, 1.0],
     },
     Vertex {
         position: [0.5, -0.5, 0.0],
-        uv: [0.0, 0.0, 1.0],
+        tex_coords: [0.0, 0.0],
     },
     Vertex {
         position: [0.0, -0.5, 0.0],
-        uv: [0.0, 0.5, 0.5],
+        tex_coords: [0.0, 0.5],
     },
     Vertex {
         position: [-0.25, 0.125, 0.0],
-        uv: [0.5, 0.5, 0.0],
+        tex_coords: [0.5, 0.5],
     },
     Vertex {
         position: [0.25, 0.125, 0.0],
-        uv: [0.0, 0.5, 0.0],
+        tex_coords: [0.0, 0.5],
     },
 ];
 

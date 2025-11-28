@@ -3,7 +3,7 @@ mod rendering;
 mod startup;
 
 use crate::TextureType::Atlas;
-use crate::rendering::material::Materials;
+use crate::rendering::material::{Material, Materials};
 use crate::rendering::mesh::Meshes;
 use crate::rendering::render_object::RenderObject;
 use crate::rendering::renderer::Renderer;
@@ -25,6 +25,7 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+use crate::rendering::bind_groups::bind_group_builder::BindGroupBuilder;
 use crate::startup::launch_startup_systems;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
@@ -117,14 +118,15 @@ impl App {
         let mut meshes = self.resources.get_mut::<Meshes>().unwrap();
         let renderer = self.resources.get::<Renderer>().unwrap();
 
-        let default_material = renderer.create_material(
-            shaders.get(ShaderType::Opaque as u32).unwrap(),
-            vec![BindGroupEntry {
-                binding: 0,
-                resource: BindingResource::TextureView(&textures.get(Atlas as u32).unwrap().view),
-            }],
-        );
-        materials.add(MaterialType::BlockOpaque as u32, default_material);
+        let default_shader = shaders.get(ShaderType::Opaque as u32).unwrap();
+        let default_material_bind_group = BindGroupBuilder::new()
+            .with_texture2d(&&textures.get(Atlas as u32).unwrap().view).
+            with_sampler(&renderer)
+            .build(&renderer, &shaders.get(ShaderType::Opaque as u32).unwrap().bind_group_layout);
+        materials.add(MaterialType::BlockOpaque as u32, Material {
+            shader: default_shader.clone(),
+            bind_group: default_material_bind_group,
+        });
 
         let mesh = renderer.create_mesh::<Vertex, u16>(TRIANGLE_VERTICES, TRIANGLE_INDICES);
         meshes.add(MeshType::Triangle as u32, mesh);

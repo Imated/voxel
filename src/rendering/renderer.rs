@@ -10,13 +10,7 @@ use std::sync::Arc;
 use wgpu::PresentMode::Mailbox;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::wgt::SamplerDescriptor;
-use wgpu::{
-    AddressMode, Backends, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer,
-    BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor,
-    Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages,
-    Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace,
-};
+use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
 use winit::window::Window;
 
 pub struct Renderer {
@@ -183,25 +177,6 @@ impl Renderer {
             })
     }
 
-    pub fn create_material(&self, shader: &Shader, entries: Vec<BindGroupEntry>) -> Material {
-        let mut entries = entries;
-        entries.push(BindGroupEntry {
-            binding: entries.len() as u32,
-            resource: BindingResource::Sampler(&self.sampler),
-        }); // add universal sampler
-
-        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &shader.bind_group_layout,
-            entries: &entries,
-        });
-
-        Material {
-            shader: shader.clone(), // only clones pointer to internal gpu resources
-            bind_group,
-        }
-    }
-
     pub fn load_texture(&self, path: &str) -> anyhow::Result<Texture> {
         Texture::new(&self.device, &self.queue, path)
     }
@@ -225,5 +200,24 @@ impl Renderer {
         let num_indices = indices.len() as u32;
 
         Mesh::new(vertex_buffer, index_buffer, num_indices)
+    }
+
+    pub(crate) fn create_bind_group_layout(&self, entries: Vec<BindGroupLayoutEntry>) -> BindGroupLayout {
+        self.device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: None,
+            entries: &entries,
+        })
+    }
+
+    pub(crate) fn create_bind_group(&self, entries: Vec<BindGroupEntry>, layout: &BindGroupLayout) -> BindGroup {
+        self.device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout,
+            entries: &entries,
+        })
+    }
+
+    pub fn universal_sampler(&self) -> &Sampler {
+        &self.sampler
     }
 }

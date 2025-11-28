@@ -6,3 +6,4 @@ pub mod renderer;
 pub mod shader;
 pub mod texture;
 pub mod vertex;
+pub mod bind_groups;

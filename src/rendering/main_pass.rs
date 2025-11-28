@@ -1,5 +1,4 @@
 use crate::rendering::render_object::RenderObject;
-use wgpu::util::RenderEncoder;
 use wgpu::{
     Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment,
     RenderPassDescriptor, StoreOp, TextureView,

@@ -47,7 +47,7 @@ impl Shader {
         path: &str,
         layout: BindGroupLayout,
     ) -> anyhow::Result<Self> {
-        let src = fs::read_to_string(env!("CARGO_MANIFEST_DIR").to_owned() + path)?;
+        let src = fs::read_to_string(env!("OUT_DIR").to_owned() + path)?;
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some(path),
             source: ShaderSource::Wgsl(src.into()),

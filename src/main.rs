@@ -1,21 +1,23 @@
 mod macros;
 mod rendering;
+mod startup;
 
 use crate::TextureType::Atlas;
 use crate::rendering::material::Materials;
 use crate::rendering::mesh::Meshes;
+use crate::rendering::render_object::RenderObject;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::Shaders;
 use crate::rendering::texture::Textures;
 use crate::rendering::vertex::Vertex;
-use legion::Resources;
+use legion::{Resources, World};
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use wgpu::{
-    BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType, ShaderStages, SurfaceError, TextureSampleType,
-    TextureViewDimension,
+    BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType, ShaderStages, SurfaceError,
+    TextureSampleType, TextureViewDimension,
 };
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
@@ -23,7 +25,7 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use crate::rendering::render_object::RenderObject;
+use crate::startup::launch_startup_systems;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
@@ -76,6 +78,7 @@ pub enum TextureType {
 
 struct App {
     resources: Resources,
+    world: World,
     last_frame_time: Instant,
     frame_count: u64,
 }
@@ -84,6 +87,7 @@ impl App {
     pub fn new(_event_loop: &EventLoop<()>) -> Self {
         Self {
             resources: Resources::default(),
+            world: World::default(),
             last_frame_time: Instant::now(),
             frame_count: 0,
         }
@@ -107,29 +111,11 @@ impl App {
     }
 
     pub fn load_assets(&mut self) -> anyhow::Result<()> {
-        let mut shaders = self.resources.get_mut::<Shaders>().unwrap();
+        let shaders = self.resources.get_mut::<Shaders>().unwrap();
         let mut materials = self.resources.get_mut::<Materials>().unwrap();
-        let mut textures = self.resources.get_mut::<Textures>().unwrap();
+        let textures = self.resources.get_mut::<Textures>().unwrap();
         let mut meshes = self.resources.get_mut::<Meshes>().unwrap();
         let renderer = self.resources.get::<Renderer>().unwrap();
-
-        let default_shader_layout = renderer.create_shader_layout(vec![BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::FRAGMENT,
-            ty: BindingType::Texture {
-                sample_type: TextureSampleType::Float { filterable: true },
-                view_dimension: TextureViewDimension::D2,
-                multisampled: false,
-            },
-            count: None,
-        }]);
-
-        let default_shader =
-            renderer.create_shader("/res/shaders/default.wgsl", default_shader_layout)?;
-        shaders.add(ShaderType::Opaque as u32, default_shader);
-
-        let atlas = renderer.load_texture("/res/textures/atlas.png")?;
-        textures.add(Atlas as u32, atlas);
 
         let default_material = renderer.create_material(
             shaders.get(ShaderType::Opaque as u32).unwrap(),
@@ -140,10 +126,7 @@ impl App {
         );
         materials.add(MaterialType::BlockOpaque as u32, default_material);
 
-        let mesh = renderer.create_mesh(
-            TRIANGLE_VERTICES,
-            TRIANGLE_INDICES,
-        );
+        let mesh = renderer.create_mesh::<Vertex, u16>(TRIANGLE_VERTICES, TRIANGLE_INDICES);
         meshes.add(MeshType::Triangle as u32, mesh);
 
         Ok(())
@@ -156,7 +139,10 @@ impl App {
 
         renderer.push_object(RenderObject {
             mesh: meshes.get(MeshType::Triangle as u32).unwrap().clone(),
-            material: materials.get(MaterialType::BlockOpaque as u32).unwrap().clone(),
+            material: materials
+                .get(MaterialType::BlockOpaque as u32)
+                .unwrap()
+                .clone(),
             model_bind_group: None,
             transparent: false,
         });
@@ -205,6 +191,8 @@ impl ApplicationHandler for App {
         self.resources.insert(Materials::new());
         self.resources.insert(Shaders::new());
         self.resources.insert(Textures::new());
+
+        launch_startup_systems(&mut self.world, &mut self.resources);
 
         self.load_assets()
             .unwrap_or_else(|err| fatal!("Failed to load assets! Error: {:?}", err));

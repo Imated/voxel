@@ -4,6 +4,8 @@ use crate::rendering::mesh::Mesh;
 use crate::rendering::render_object::*;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
+use crate::rendering::vertex::Vertex;
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::PresentMode::Mailbox;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
@@ -16,7 +18,6 @@ use wgpu::{
     Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace,
 };
 use winit::window::Window;
-use crate::rendering::vertex::Vertex;
 
 pub struct Renderer {
     window: Arc<Window>,
@@ -213,7 +214,11 @@ impl Renderer {
         })
     }
 
-    pub fn create_mesh(&self, vertices: &[Vertex], indices: &[u16]) -> Mesh {
+    pub fn create_mesh<V, I>(&self, vertices: &[Vertex], indices: &[u16]) -> Mesh
+    where
+        V: Pod + Zeroable,
+        I: Pod + Zeroable,
+    {
         let vertex_buffer =
             self.create_buffer(bytemuck::cast_slice(vertices), BufferUsages::VERTEX);
         let index_buffer = self.create_buffer(bytemuck::cast_slice(indices), BufferUsages::INDEX);

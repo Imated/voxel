@@ -24,6 +24,7 @@ pub struct Renderer {
     queue: Queue,
     config: SurfaceConfiguration,
     surface: Surface<'static>,
+    is_surface_configured: bool,
 
     main_pass: MainRenderPass,
     sampler: Sampler,
@@ -101,6 +102,7 @@ impl Renderer {
             queue,
             config,
             surface,
+            is_surface_configured: false,
             main_pass,
             sampler,
             render_objects: vec![],
@@ -116,12 +118,16 @@ impl Renderer {
         self.config.width = width;
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
+        self.is_surface_configured = true;
     }
 
     pub fn update(&mut self) {}
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         if self.config.width <= 0 && self.config.height <= 0 {
+            return Ok(());
+        }
+        if !self.is_surface_configured {
             return Ok(());
         }
 

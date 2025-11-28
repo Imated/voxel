@@ -3,21 +3,18 @@ mod rendering;
 
 use crate::TextureType::Atlas;
 use crate::rendering::material::Materials;
-use crate::rendering::mesh::{Mesh, Meshes};
+use crate::rendering::mesh::Meshes;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::Shaders;
 use crate::rendering::texture::Textures;
 use crate::rendering::vertex::Vertex;
-use anyhow::Error;
-use legion::{Resources, World, WorldOptions};
+use legion::Resources;
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use wgpu::util::BufferInitDescriptor;
 use wgpu::{
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType,
-    BufferUsages, SamplerBindingType, ShaderStages, SurfaceError, TextureSampleType,
+    BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType, ShaderStages, SurfaceError, TextureSampleType,
     TextureViewDimension,
 };
 use winit::application::ApplicationHandler;
@@ -78,7 +75,6 @@ pub enum TextureType {
 }
 
 struct App {
-    world: World,
     resources: Resources,
     last_frame_time: Instant,
     frame_count: u64,
@@ -87,7 +83,6 @@ struct App {
 impl App {
     pub fn new(_event_loop: &EventLoop<()>) -> Self {
         Self {
-            world: World::default(),
             resources: Resources::default(),
             last_frame_time: Instant::now(),
             frame_count: 0,
@@ -116,7 +111,7 @@ impl App {
         let mut materials = self.resources.get_mut::<Materials>().unwrap();
         let mut textures = self.resources.get_mut::<Textures>().unwrap();
         let mut meshes = self.resources.get_mut::<Meshes>().unwrap();
-        let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
+        let renderer = self.resources.get::<Renderer>().unwrap();
 
         let default_shader_layout = renderer.create_shader_layout(vec![BindGroupLayoutEntry {
             binding: 0,

@@ -5,14 +5,14 @@ pub struct BindGroupBuilder<'a> {
     pub(crate) entries: Vec<BindGroupEntry<'a>>,
 }
 
-impl BindGroupBuilder {
+impl<'a> BindGroupBuilder<'a> {
     pub fn new() -> Self {
         Self {
             entries: vec![],
         }
     }
 
-    pub fn with_texture2d(mut self, view: &TextureView) -> Self {
+    pub fn with_texture2d(mut self, view: &'a TextureView) -> Self {
         self.entries.push(BindGroupEntry {
             binding: self.entries.len() as u32,
             resource: BindingResource::TextureView(view),
@@ -21,7 +21,7 @@ impl BindGroupBuilder {
         self
     }
 
-    pub fn with_sampler(mut self, renderer: &Renderer) -> Self {
+    pub fn with_sampler(mut self, renderer: &'a Renderer) -> Self {
         self.entries.push(BindGroupEntry {
             binding: self.entries.len() as u32,
             resource: BindingResource::Sampler(renderer.universal_sampler()),
@@ -30,7 +30,7 @@ impl BindGroupBuilder {
         self
     }
 
-    pub fn build(self, renderer: &Renderer, layout: &BindGroupLayout) -> BindGroup {
+    pub fn build(self, renderer: &'a Renderer, layout: &BindGroupLayout) -> BindGroup {
         renderer.create_bind_group(self.entries, layout)
     }
 }

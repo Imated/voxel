@@ -1,4 +1,4 @@
-use crate::rendering::render_object::RenderObject;
+use crate::rendering::render_object::{PassType, RenderObject};
 use wgpu::{
     Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment,
     RenderPassDescriptor, StoreOp, TextureView,
@@ -53,9 +53,13 @@ impl MainRenderPass {
             render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             render_pass.set_index_buffer(mesh.indices.slice(..), IndexFormat::Uint16);
 
-            render_pass.draw_indexed(0..mesh.num_indices, 0, 0..1);
+            render_pass.draw_indexed(mesh.start_index..mesh.num_indices, 0, 0..1);
         }
 
         drop(render_pass);
+    }
+
+    pub fn pass_type(&self) -> PassType {
+        PassType::Opaque
     }
 }

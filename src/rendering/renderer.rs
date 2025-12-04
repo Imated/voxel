@@ -1,5 +1,4 @@
 use crate::rendering::main_pass::{FrameData, MainRenderPass};
-use crate::rendering::material::Material;
 use crate::rendering::mesh::Mesh;
 use crate::rendering::render_object::*;
 use crate::rendering::shader::Shader;
@@ -7,10 +6,10 @@ use crate::rendering::texture::Texture;
 use crate::rendering::vertex::Vertex;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
-use wgpu::PresentMode::Mailbox;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::wgt::SamplerDescriptor;
-use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
+use wgpu::PresentMode::Mailbox;
+use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, Buffer, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
 use winit::window::Window;
 
 pub struct Renderer {
@@ -140,7 +139,7 @@ impl Renderer {
         let main_objects: Vec<&RenderObject> = self
             .render_objects
             .iter()
-            .filter(|obj| !obj.transparent)
+            .filter(|obj| obj.pass == self.main_pass.pass_type())
             .collect(); // pass all non-transparent objects into the main pass.
 
         self.main_pass
@@ -162,21 +161,6 @@ impl Renderer {
         Shader::new(&self.device, &self.config, path, layout)
     }
 
-    pub fn create_shader_layout(&self, mut entries: Vec<BindGroupLayoutEntry>) -> BindGroupLayout {
-        entries.push(BindGroupLayoutEntry {
-            binding: entries.len() as u32,
-            visibility: ShaderStages::FRAGMENT,
-            ty: BindingType::Sampler(SamplerBindingType::Filtering),
-            count: None,
-        }); // add universal sampler
-
-        self.device
-            .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: None,
-                entries: &entries,
-            })
-    }
-
     pub fn load_texture(&self, path: &str) -> anyhow::Result<Texture> {
         Texture::new(&self.device, &self.queue, path)
     }
@@ -189,7 +173,7 @@ impl Renderer {
         })
     }
 
-    pub fn create_mesh<V, I>(&self, vertices: &[Vertex], indices: &[u16]) -> Mesh
+    pub fn create_mesh<V, I>(&self, vertices: &[Vertex], indices: &[u16], start_index: u32) -> Mesh
     where
         V: Pod + Zeroable,
         I: Pod + Zeroable,
@@ -199,7 +183,12 @@ impl Renderer {
         let index_buffer = self.create_buffer(bytemuck::cast_slice(indices), BufferUsages::INDEX);
         let num_indices = indices.len() as u32;
 
-        Mesh::new(vertex_buffer, index_buffer, num_indices)
+        Mesh {
+            vertices: vertex_buffer,
+            indices: index_buffer,
+            num_indices,
+            start_index,
+        }
     }
 
     pub(crate) fn create_bind_group_layout(&self, entries: Vec<BindGroupLayoutEntry>) -> BindGroupLayout {

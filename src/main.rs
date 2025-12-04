@@ -15,10 +15,7 @@ use log::*;
 use std::process::abort;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use wgpu::{
-    BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType, ShaderStages, SurfaceError,
-    TextureSampleType, TextureViewDimension,
-};
+use wgpu::SurfaceError;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
@@ -26,6 +23,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 use crate::rendering::bind_groups::bind_group_builder::BindGroupBuilder;
+use crate::rendering::render_object::PassType::{Opaque, Transparent};
 use crate::startup::launch_startup_systems;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
@@ -128,7 +126,7 @@ impl App {
             bind_group: default_material_bind_group,
         });
 
-        let mesh = renderer.create_mesh::<Vertex, u16>(TRIANGLE_VERTICES, TRIANGLE_INDICES);
+        let mesh = renderer.create_mesh::<Vertex, u16>(TRIANGLE_VERTICES, TRIANGLE_INDICES, 0);
         meshes.add(MeshType::Triangle as u32, mesh);
 
         Ok(())
@@ -146,7 +144,7 @@ impl App {
                 .unwrap()
                 .clone(),
             model_bind_group: None,
-            transparent: false,
+            pass: Opaque,
         });
 
         match renderer.render() {

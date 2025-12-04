@@ -7,5 +7,11 @@ pub struct RenderObject {
     pub mesh: Mesh,
     pub material: Material,
     pub model_bind_group: Option<BindGroup>,
-    pub transparent: bool,
+    pub pass: PassType,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PassType {
+    Opaque,
+    Transparent
 }

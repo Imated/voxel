@@ -9,16 +9,7 @@ pub struct Mesh {
     pub(crate) vertices: Buffer,
     pub(crate) indices: Buffer,
     pub(crate) num_indices: u32,
-}
-
-impl Mesh {
-    pub fn new(vertices: Buffer, indices: Buffer, num_indices: u32) -> Self {
-        Self {
-            vertices,
-            indices,
-            num_indices,
-        }
-    }
+    pub(crate) start_index: u32,
 }
 
 pub struct Meshes {

@@ -32,10 +32,11 @@ pub struct Renderer {
     sampler: Sampler,
 
     render_objects: Vec<RenderObject>,
-    camera: Camera,
+    pub camera: Camera,
 
-    scene_bind_group: Option<BindGroup>,
+    scene_bind_group: BindGroup,
     scene_bind_group_layout: BindGroupLayout,
+    scene_data_buffer: Buffer,
 }
 
 impl Renderer {
@@ -126,6 +127,25 @@ impl Renderer {
                 }],
         });
 
+        let scene_data = SceneData {
+            view_proj: Mat4::IDENTITY,
+        };
+
+        let scene_data_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Scene Data Buffer"),
+            contents: cast_slice(&[scene_data]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let scene_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Scene Bind Group"),
+            layout: &scene_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: scene_data_buffer.as_entire_binding(),
+            }],
+        });
+
         Ok(Self {
             window,
             device,
@@ -137,28 +157,20 @@ impl Renderer {
             sampler,
             render_objects: vec![],
             camera,
-            scene_bind_group: None,
+            scene_bind_group,
             scene_bind_group_layout,
+            scene_data_buffer,
         })
     }
 
-    fn rebuild_scene_bind_group(&mut self, scene_data: SceneData) {
-        let scene_data_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Scene Data Buffer"),
-            contents: cast_slice(&[scene_data]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+    pub fn update_scene_data(&self) {
+        self.update_scene_data_with(SceneData {
+            view_proj: self.camera.build_view_projection_matrix(),
         });
+    }
 
-        let scene_bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Scene Bind Group"),
-            layout: &self.scene_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: scene_data_buffer.as_entire_binding(),
-            }],
-        });
-
-        self.scene_bind_group = Some(scene_bind_group);
+    pub fn update_scene_data_with(&self, scene_data: SceneData) {
+        self.queue.write_buffer(&self.scene_data_buffer, 0, cast_slice(&[scene_data]));
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -169,15 +181,14 @@ impl Renderer {
         }
         self.config.width = width;
         self.config.height = height;
+
         self.surface.configure(&self.device, &self.config);
+
         self.camera.aspect = width as f32 / height as f32;
-        self.rebuild_scene_bind_group(SceneData {
-            view_proj: self.camera.build_view_projection_matrix(),
-        });
+        self.update_scene_data();
+
         self.is_surface_configured = true;
     }
-
-    pub fn update(&mut self) {}
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         if self.config.width <= 0 && self.config.height <= 0 {
@@ -196,7 +207,7 @@ impl Renderer {
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
-        let frame_data = FrameData { color: &view, scene_bind_group: (&self.scene_bind_group).clone().unwrap() };
+        let frame_data = FrameData { color: &view, scene_bind_group: (&self.scene_bind_group).clone() };
 
         let main_objects: Vec<&RenderObject> = self
             .render_objects

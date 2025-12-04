@@ -1,6 +1,7 @@
 mod macros;
 mod rendering;
 mod startup;
+mod camera_controller;
 
 use crate::TextureType::Atlas;
 use crate::rendering::material::{Material, Materials};
@@ -22,6 +23,7 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+use crate::camera_controller::CameraController;
 use crate::rendering::bind_groups::bind_group_builder::BindGroupBuilder;
 use crate::rendering::render_object::PassType::{Opaque, Transparent};
 use crate::startup::launch_startup_systems;
@@ -80,6 +82,7 @@ struct App {
     world: World,
     last_frame_time: Instant,
     frame_count: u64,
+    cam_controller: CameraController
 }
 
 impl App {
@@ -89,12 +92,14 @@ impl App {
             world: World::default(),
             last_frame_time: Instant::now(),
             frame_count: 0,
+            cam_controller: CameraController::new(0.002),
         }
     }
 }
 
 impl App {
-    pub fn handle_key(&self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
+    pub fn handle_key(&mut self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
+        self.cam_controller.handle_key(code, is_pressed);
         match (code, is_pressed) {
             (KeyCode::Escape, true) => event_loop.exit(),
             _ => {}
@@ -136,6 +141,9 @@ impl App {
         let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
         let meshes = self.resources.get::<Meshes>().unwrap();
         let materials = self.resources.get::<Materials>().unwrap();
+
+        self.cam_controller.update_camera(&mut renderer.camera);
+        renderer.update_scene_data();
 
         renderer.push_object(RenderObject {
             mesh: meshes.get(MeshType::Triangle as u32).unwrap().clone(),

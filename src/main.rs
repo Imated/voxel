@@ -118,9 +118,9 @@ impl App {
 
         let default_shader = shaders.get(ShaderType::Opaque as u32).unwrap();
         let default_material_bind_group = BindGroupBuilder::new()
-            .with_texture2d(&&textures.get(Atlas as u32).unwrap().view).
+            .with_texture2d(&textures.get(Atlas as u32).unwrap().view).
             with_sampler(&renderer)
-            .build(&renderer, &shaders.get(ShaderType::Opaque as u32).unwrap().bind_group_layout);
+            .build(&renderer, &shaders.get(ShaderType::Opaque as u32).unwrap().bind_group_layouts[1]);
         materials.add(MaterialType::BlockOpaque as u32, Material {
             shader: default_shader.clone(),
             bind_group: default_material_bind_group,

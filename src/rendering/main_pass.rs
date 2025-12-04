@@ -1,11 +1,9 @@
 use crate::rendering::render_object::{PassType, RenderObject};
-use wgpu::{
-    Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment,
-    RenderPassDescriptor, StoreOp, TextureView,
-};
+use wgpu::{BindGroup, Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, TextureView};
 
 pub struct FrameData<'a> {
     pub color: &'a TextureView,
+    pub scene_bind_group: BindGroup,
 }
 
 pub struct MainRenderPass {}
@@ -49,7 +47,9 @@ impl MainRenderPass {
 
             render_pass.set_pipeline(&shader.pipeline);
 
-            render_pass.set_bind_group(0, &material.bind_group, &[]);
+            render_pass.set_bind_group(0, &data.scene_bind_group, &[]);
+            render_pass.set_bind_group(1, &material.bind_group, &[]);
+
             render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             render_pass.set_index_buffer(mesh.indices.slice(..), IndexFormat::Uint16);
 

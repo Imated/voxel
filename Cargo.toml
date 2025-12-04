@@ -13,6 +13,7 @@ pollster = "0.4.0"
 bytemuck = { version = "1.24", features = [ "derive" ] }
 legion = "0.4.0"
 image = { version = "0.25.9", features = [ "png", "jpeg" ] }
+glam = { version = "0.30.9", features = [ "bytemuck" ] }
 
 [build-dependencies]
 anyhow = "1.0.100"

@@ -37,7 +37,7 @@ pub struct Shader {
     pub(crate) module: ShaderModule,
     pub(crate) layout: PipelineLayout,
     pub(crate) pipeline: RenderPipeline,
-    pub(crate) bind_group_layout: BindGroupLayout,
+    pub(crate) bind_group_layouts: [BindGroupLayout; 2],
 }
 
 impl Shader {
@@ -45,7 +45,7 @@ impl Shader {
         device: &Device,
         config: &SurfaceConfiguration,
         path: &str,
-        layout: BindGroupLayout,
+        layouts: [&BindGroupLayout; 2],
     ) -> anyhow::Result<Self> {
         let src = fs::read_to_string(env!("OUT_DIR").to_owned() + path)?;
         let shader = device.create_shader_module(ShaderModuleDescriptor {
@@ -54,7 +54,7 @@ impl Shader {
         });
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some(path),
-            bind_group_layouts: &[&layout],
+            bind_group_layouts: &layouts,
             push_constant_ranges: &[],
         });
 
@@ -100,7 +100,10 @@ impl Shader {
             module: shader,
             layout: render_pipeline_layout,
             pipeline: render_pipeline,
-            bind_group_layout: layout,
+            bind_group_layouts: [
+                layouts[0].clone(),
+                layouts[1].clone(),
+            ],
         })
     }
 }

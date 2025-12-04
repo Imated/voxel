@@ -4,13 +4,21 @@ use crate::rendering::render_object::*;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
 use crate::rendering::vertex::Vertex;
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{cast_slice, Pod, Zeroable};
 use std::sync::Arc;
+use glam::{Mat4, Vec3};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::wgt::SamplerDescriptor;
 use wgpu::PresentMode::Mailbox;
-use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, Buffer, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
+use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Device, DeviceDescriptor, Features, FilterMode, Instance, InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterOptions, Sampler, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, Trace};
 use winit::window::Window;
+use crate::rendering::camera::Camera;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Pod, Zeroable)]
+struct SceneData {
+    view_proj: Mat4,
+}
 
 pub struct Renderer {
     window: Arc<Window>,
@@ -24,6 +32,10 @@ pub struct Renderer {
     sampler: Sampler,
 
     render_objects: Vec<RenderObject>,
+    camera: Camera,
+
+    scene_bind_group: Option<BindGroup>,
+    scene_bind_group_layout: BindGroupLayout,
 }
 
 impl Renderer {
@@ -89,6 +101,30 @@ impl Renderer {
         });
 
         let main_pass = MainRenderPass::new();
+        let camera = Camera {
+            eye: (0.0, 1.0, 2.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: Vec3::Y,
+            aspect: config.width as f32 / config.height as f32,
+            fov: 45.0,
+            near_clip: 0.1,
+            far_clip: 100.0,
+        };
+
+        let scene_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Scene Bind Group Layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX_FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+        });
 
         Ok(Self {
             window,
@@ -100,7 +136,29 @@ impl Renderer {
             main_pass,
             sampler,
             render_objects: vec![],
+            camera,
+            scene_bind_group: None,
+            scene_bind_group_layout,
         })
+    }
+
+    fn rebuild_scene_bind_group(&mut self, scene_data: SceneData) {
+        let scene_data_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Scene Data Buffer"),
+            contents: cast_slice(&[scene_data]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let scene_bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Scene Bind Group"),
+            layout: &self.scene_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: scene_data_buffer.as_entire_binding(),
+            }],
+        });
+
+        self.scene_bind_group = Some(scene_bind_group);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -112,6 +170,10 @@ impl Renderer {
         self.config.width = width;
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
+        self.camera.aspect = width as f32 / height as f32;
+        self.rebuild_scene_bind_group(SceneData {
+            view_proj: self.camera.build_view_projection_matrix(),
+        });
         self.is_surface_configured = true;
     }
 
@@ -134,7 +196,7 @@ impl Renderer {
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
-        let frame_data = FrameData { color: &view };
+        let frame_data = FrameData { color: &view, scene_bind_group: (&self.scene_bind_group).clone().unwrap() };
 
         let main_objects: Vec<&RenderObject> = self
             .render_objects
@@ -158,7 +220,7 @@ impl Renderer {
     }
 
     pub fn create_shader(&self, path: &str, layout: BindGroupLayout) -> anyhow::Result<Shader> {
-        Shader::new(&self.device, &self.config, path, layout)
+        Shader::new(&self.device, &self.config, path, [&self.scene_bind_group_layout, &layout])
     }
 
     pub fn load_texture(&self, path: &str) -> anyhow::Result<Texture> {

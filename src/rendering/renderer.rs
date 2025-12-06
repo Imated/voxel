@@ -15,13 +15,13 @@ use std::sync::Arc;
 use wgpu::AddressMode::ClampToEdge;
 use wgpu::BufferBindingType::Uniform;
 use wgpu::FilterMode::Nearest;
+use wgpu::hal::DynDevice;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Sampler,
     ShaderStages, SurfaceError, TextureViewDescriptor,
 };
-use wgpu::hal::DynDevice;
 use winit::window::Window;
 
 #[repr(C)]
@@ -70,15 +70,14 @@ impl Renderer {
             view_proj: Mat4::IDENTITY,
         };
 
+        let scene_data_buffer = context.create_buffer(
+            &[scene_data],
+            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        );
+
         let scene_bind_group_layout = BindGroupLayoutBuilder::new()
             .with_buffer(ShaderStages::VERTEX_FRAGMENT, Uniform)
             .build(&context);
-
-        let scene_data_buffer = context.device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Scene Data Buffer"),
-            contents: cast_slice(&[scene_data]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-        });
 
         let scene_bind_group = BindGroupBuilder::new()
             .with_buffer(&scene_data_buffer)
@@ -117,7 +116,9 @@ impl Renderer {
             return;
         }
 
-        self.context.surface.configure(&self.context.device, &self.context.config);
+        self.context
+            .surface
+            .configure(&self.context.device, &self.context.config);
 
         self.camera.aspect = width as f32 / height as f32;
         self.update_scene_data();
@@ -127,7 +128,9 @@ impl Renderer {
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         let mut context = &mut self.context;
-        if (context.config.width <= 0 && context.config.height <= 0) || !context.is_surface_configured {
+        if (context.config.width <= 0 && context.config.height <= 0)
+            || !context.is_surface_configured
+        {
             return Ok(());
         }
 
@@ -166,21 +169,30 @@ impl Renderer {
         self.render_objects.push(obj);
     }
 
-    pub fn create_shader(&self, path: &str, material_layout: BindGroupLayout) -> Result<Shader, CreateShaderError> {
-        self.context.create_shader(path, &self.scene_bind_group_layout, &material_layout)
+    pub fn create_shader(
+        &self,
+        path: &str,
+        material_layout: BindGroupLayout,
+    ) -> Result<Shader, CreateShaderError> {
+        self.context
+            .create_shader(path, &self.scene_bind_group_layout, &material_layout)
     }
 
     pub fn create_texture(&self, path: &str) -> Result<Texture, CreateTextureError> {
         self.context.create_texture(path)
     }
 
-    pub fn create_mesh<V, I> (&self, vertices: &[V], indices: &[I], start_index: u32) -> Mesh
+    pub fn create_mesh<V, I>(&self, vertices: &[V], indices: &[I], start_index: u32) -> Mesh
     where
         V: Pod + Zeroable,
         I: Pod + Zeroable,
     {
-        let vertex_buffer = self.context.create_buffer(cast_slice(vertices), BufferUsages::VERTEX);
-        let index_buffer = self.context.create_buffer(cast_slice(indices), BufferUsages::INDEX);
+        let vertex_buffer = self
+            .context
+            .create_buffer(vertices, BufferUsages::VERTEX);
+        let index_buffer = self
+            .context
+            .create_buffer(indices, BufferUsages::INDEX);
         let num_indices = indices.len() as u32;
 
         Mesh {

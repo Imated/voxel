@@ -1,4 +1,5 @@
 use crate::rendering::vertex::Vertex;
+use crate::rendering::wgpu_context::WGPUContext;
 use std::fs;
 use wgpu::naga::FastHashMap;
 use wgpu::{
@@ -8,7 +9,6 @@ use wgpu::{
     RenderPipelineDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource,
     SurfaceConfiguration, VertexState,
 };
-use crate::rendering::wgpu_context::WGPUContext;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ShaderId(pub u32);
@@ -38,5 +38,5 @@ pub struct Shader {
     pub(crate) module: ShaderModule,
     pub(crate) pipeline: RenderPipeline,
     pub(crate) global_layout: BindGroupLayout,
-    pub(crate) material_layout: BindGroupLayout
+    pub(crate) material_layout: BindGroupLayout,
 }

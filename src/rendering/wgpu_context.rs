@@ -1,17 +1,29 @@
 use crate::rendering::shader::Shader;
+use crate::rendering::texture::Texture;
 use crate::rendering::vertex::Vertex;
-use std::fmt::Debug;
-use std::{fs, io};
-use std::sync::Arc;
+use bytemuck::checked::cast_slice;
+use bytemuck::{Pod, Zeroable};
 use image::{ImageError, ImageReader};
+use std::fmt::Debug;
+use std::sync::Arc;
+use std::{fs, io};
 use thiserror::Error;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::MemoryHints::Performance;
 use wgpu::PowerPreference::HighPerformance;
 use wgpu::PresentMode::Mailbox;
-use wgpu::{Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features, FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError, RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource, Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor, Trace, VertexState};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{
+    Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState,
+    ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features,
+    FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState,
+    PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError,
+    RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource,
+    Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
+    Trace, VertexState,
+};
 use winit::window::Window;
-use crate::rendering::texture::Texture;
 
 #[derive(Error, Debug)]
 pub enum CreateWGPUContextError {
@@ -61,8 +73,7 @@ impl WGPUContext {
             })
             .await?;
 
-        let surface_config =
-            Self::setup_surface_config(&adapter, &surface, window.clone());
+        let surface_config = Self::setup_surface_config(&adapter, &surface, window.clone());
 
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
@@ -117,10 +128,13 @@ impl WGPUContext {
         config
     }
 
-    pub fn create_buffer(&self, contents: &[u8], usage: BufferUsages) -> Buffer {
+    pub fn create_buffer<T>(&self, contents: &[T], usage: BufferUsages) -> Buffer
+    where
+        T: Pod + Zeroable,
+    {
         self.device.create_buffer_init(&BufferInitDescriptor {
             label: None,
-            contents,
+            contents: cast_slice(contents),
             usage,
         })
     }
@@ -174,7 +188,12 @@ impl WGPUContext {
         })
     }
 
-    pub(crate) fn create_shader(&self, path: &str, global_layout: &BindGroupLayout, material_layout: &BindGroupLayout) -> Result<Shader, CreateShaderError> {
+    pub(crate) fn create_shader(
+        &self,
+        path: &str,
+        global_layout: &BindGroupLayout,
+        material_layout: &BindGroupLayout,
+    ) -> Result<Shader, CreateShaderError> {
         let src = fs::read_to_string(env!("OUT_DIR").to_owned() + path)?;
         let shader = self.device.create_shader_module(ShaderModuleDescriptor {
             label: Some(path),
@@ -191,50 +210,58 @@ impl WGPUContext {
         })
     }
 
-    pub(crate) fn create_render_pipeline(&self, shader: &ShaderModule, layouts: [&BindGroupLayout; 2]) -> RenderPipeline {
-        let render_pipeline_layout = self.device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &layouts,
-            push_constant_ranges: &[],
-        });
+    pub(crate) fn create_render_pipeline(
+        &self,
+        shader: &ShaderModule,
+        layouts: [&BindGroupLayout; 2],
+    ) -> RenderPipeline {
+        let render_pipeline_layout =
+            self.device
+                .create_pipeline_layout(&PipelineLayoutDescriptor {
+                    label: None,
+                    bind_group_layouts: &layouts,
+                    push_constant_ranges: &[],
+                });
 
-        let render_pipeline = self.device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: None,
-            layout: Some(&render_pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc()],
-                compilation_options: PipelineCompilationOptions::default(),
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(ColorTargetState {
-                    format: self.config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-                compilation_options: PipelineCompilationOptions::default(),
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                unclipped_depth: false,
-                polygon_mode: PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-            cache: None,
-        });
+        let render_pipeline = self
+            .device
+            .create_render_pipeline(&RenderPipelineDescriptor {
+                label: None,
+                layout: Some(&render_pipeline_layout),
+                vertex: VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[Vertex::desc()],
+                    compilation_options: PipelineCompilationOptions::default(),
+                },
+                fragment: Some(FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(ColorTargetState {
+                        format: self.config.format,
+                        blend: Some(BlendState::REPLACE),
+                        write_mask: ColorWrites::ALL,
+                    })],
+                    compilation_options: PipelineCompilationOptions::default(),
+                }),
+                primitive: PrimitiveState {
+                    topology: PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: FrontFace::Ccw,
+                    cull_mode: Some(Face::Back),
+                    unclipped_depth: false,
+                    polygon_mode: PolygonMode::Fill,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview: None,
+                cache: None,
+            });
 
         render_pipeline
     }

@@ -36,71 +36,7 @@ impl Shaders {
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Shader {
     pub(crate) module: ShaderModule,
-    pub(crate) layout: PipelineLayout,
     pub(crate) pipeline: RenderPipeline,
-    pub(crate) bind_group_layouts: [BindGroupLayout; 2],
-}
-
-impl Shader {
-    pub fn new(
-        context: &WGPUContext,
-        path: &str,
-        layouts: [&BindGroupLayout; 2],
-    ) -> anyhow::Result<Self> {
-        let src = fs::read_to_string(env!("OUT_DIR").to_owned() + path)?;
-        let shader = context.device.create_shader_module(ShaderModuleDescriptor {
-            label: Some(path),
-            source: ShaderSource::Wgsl(src.into()),
-        });
-        let render_pipeline_layout = context.device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some(path),
-            bind_group_layouts: &layouts,
-            push_constant_ranges: &[],
-        });
-
-        let render_pipeline = context.device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some(path),
-            layout: Some(&render_pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc()],
-                compilation_options: PipelineCompilationOptions::default(),
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(ColorTargetState {
-                    format: context.config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-                compilation_options: PipelineCompilationOptions::default(),
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                unclipped_depth: false,
-                polygon_mode: PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-            cache: None,
-        });
-
-        Ok(Self {
-            module: shader,
-            layout: render_pipeline_layout,
-            pipeline: render_pipeline,
-            bind_group_layouts: [layouts[0].clone(), layouts[1].clone()],
-        })
-    }
+    pub(crate) global_layout: BindGroupLayout,
+    pub(crate) material_layout: BindGroupLayout
 }

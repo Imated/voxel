@@ -8,7 +8,7 @@ use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::utils::sampler_builder::SamplerBuilder;
 use crate::rendering::vertex::Vertex;
-use crate::rendering::wgpu_context::WGPUContext;
+use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
@@ -21,6 +21,7 @@ use wgpu::{
     BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Sampler,
     ShaderStages, SurfaceError, TextureViewDescriptor,
 };
+use wgpu::hal::DynDevice;
 use winit::window::Window;
 
 #[repr(C)]
@@ -109,13 +110,12 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        if width <= 0 && height <= 0 {
-            self.context.config.width = width;
-            self.context.config.height = height;
-            return;
-        }
         self.context.config.width = width;
         self.context.config.height = height;
+
+        if width <= 0 && height <= 0 {
+            return;
+        }
 
         self.context.surface.configure(&self.context.device, &self.context.config);
 
@@ -127,10 +127,7 @@ impl Renderer {
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         let mut context = &mut self.context;
-        if context.config.width <= 0 && context.config.height <= 0 {
-            return Ok(());
-        }
-        if !context.is_surface_configured {
+        if (context.config.width <= 0 && context.config.height <= 0) || !context.is_surface_configured {
             return Ok(());
         }
 
@@ -169,34 +166,21 @@ impl Renderer {
         self.render_objects.push(obj);
     }
 
-    pub fn create_shader(&self, path: &str, layout: BindGroupLayout) -> anyhow::Result<Shader> {
-        Shader::new(
-            &self.context,
-            path,
-            [&self.scene_bind_group_layout, &layout],
-        )
+    pub fn create_shader(&self, path: &str, material_layout: BindGroupLayout) -> Result<Shader, CreateShaderError> {
+        self.context.create_shader(path, &self.scene_bind_group_layout, &material_layout)
     }
 
-    pub fn load_texture(&self, path: &str) -> anyhow::Result<Texture> {
-        Texture::new(&self.context, path)
+    pub fn create_texture(&self, path: &str) -> Result<Texture, CreateTextureError> {
+        self.context.create_texture(path)
     }
 
-    pub fn create_buffer(&self, contents: &[u8], usage: BufferUsages) -> Buffer {
-        self.context.device.create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents,
-            usage,
-        })
-    }
-
-    pub fn create_mesh<V, I>(&self, vertices: &[Vertex], indices: &[u16], start_index: u32) -> Mesh
+    pub fn create_mesh<V, I> (&self, vertices: &[V], indices: &[I], start_index: u32) -> Mesh
     where
         V: Pod + Zeroable,
         I: Pod + Zeroable,
     {
-        let vertex_buffer =
-            self.create_buffer(bytemuck::cast_slice(vertices), BufferUsages::VERTEX);
-        let index_buffer = self.create_buffer(bytemuck::cast_slice(indices), BufferUsages::INDEX);
+        let vertex_buffer = self.context.create_buffer(cast_slice(vertices), BufferUsages::VERTEX);
+        let index_buffer = self.context.create_buffer(cast_slice(indices), BufferUsages::INDEX);
         let num_indices = indices.len() as u32;
 
         Mesh {

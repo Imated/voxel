@@ -32,57 +32,6 @@ impl Textures {
 
 pub struct Texture {
     pub size: Extent3d,
-    data: wgpu::Texture,
+    pub(crate) data: wgpu::Texture,
     pub view: TextureView,
-}
-
-impl Texture {
-    pub fn new(context: &WGPUContext, path: &str) -> anyhow::Result<Self> {
-        let image = ImageReader::open(env!("CARGO_MANIFEST_DIR").to_owned() + path)?.decode()?;
-        let image_rgba = image.to_rgba8();
-
-        use image::GenericImageView;
-        let (width, height) = image.dimensions();
-
-        let size = Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1, // 1 layer for 2d texture
-        };
-
-        let texture = context.device.create_texture(&TextureDescriptor {
-            label: Some(path),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST, // texture_binding = use in shaders, copy_dst = copy data to texture
-            view_formats: &[],
-        });
-
-        context.queue.write_texture(
-            TexelCopyTextureInfo {
-                texture: &texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: TextureAspect::All,
-            },
-            &image_rgba,
-            TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            size,
-        );
-
-        let view = texture.create_view(&TextureViewDescriptor::default());
-
-        Ok(Self {
-            size,
-            data: texture,
-            view,
-        })
-    }
 }

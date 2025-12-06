@@ -1,15 +1,17 @@
-use std::fmt::{Debug, Formatter};
+use crate::rendering::shader::Shader;
+use crate::rendering::vertex::Vertex;
+use std::fmt::Debug;
+use std::{fs, io};
 use std::sync::Arc;
+use image::{ImageError, ImageReader};
 use thiserror::Error;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::MemoryHints::Performance;
 use wgpu::PowerPreference::HighPerformance;
 use wgpu::PresentMode::Mailbox;
-use wgpu::{
-    Adapter, Backends, CreateSurfaceError, Device, DeviceDescriptor, Features, Instance,
-    InstanceDescriptor, Limits, PresentMode, Queue, RequestAdapterError, RequestAdapterOptions,
-    RequestDeviceError, Surface, SurfaceConfiguration, TextureUsages, Trace,
-};
+use wgpu::{Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features, FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError, RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource, Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor, Trace, VertexState};
 use winit::window::Window;
+use crate::rendering::texture::Texture;
 
 #[derive(Error, Debug)]
 pub enum CreateWGPUContextError {
@@ -19,6 +21,20 @@ pub enum CreateWGPUContextError {
     RequestAdapterError(#[from] RequestAdapterError),
     #[error("Failed to request a viable device due to {0:?}.")]
     RequestDeviceError(#[from] RequestDeviceError),
+}
+
+#[derive(Error, Debug)]
+pub enum CreateShaderError {
+    #[error("Failed to read shader file due to {0:?}.")]
+    IoError(#[from] io::Error),
+}
+
+#[derive(Error, Debug)]
+pub enum CreateTextureError {
+    #[error("Failed to read texture file due to {0:?}.")]
+    IoError(#[from] io::Error),
+    #[error("Failed to decode texture due to {0:?}.")]
+    DecodeError(#[from] ImageError),
 }
 
 pub struct WGPUContext {
@@ -46,7 +62,7 @@ impl WGPUContext {
             .await?;
 
         let surface_config =
-            Self::setup_surface_config(&instance, &adapter, &surface, window.clone());
+            Self::setup_surface_config(&adapter, &surface, window.clone());
 
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
@@ -68,7 +84,6 @@ impl WGPUContext {
     }
 
     fn setup_surface_config(
-        instance: &Instance,
         adapter: &Adapter,
         surface: &Surface,
         window: Arc<Window>,
@@ -100,5 +115,127 @@ impl WGPUContext {
         };
 
         config
+    }
+
+    pub fn create_buffer(&self, contents: &[u8], usage: BufferUsages) -> Buffer {
+        self.device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents,
+            usage,
+        })
+    }
+
+    pub(crate) fn create_texture(&self, path: &str) -> Result<Texture, CreateTextureError> {
+        let image = ImageReader::open(env!("CARGO_MANIFEST_DIR").to_owned() + path)?.decode()?;
+        let image_rgba = image.to_rgba8();
+
+        use image::GenericImageView;
+        let (width, height) = image.dimensions();
+
+        let size = Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1, // 1 layer for 2d texture
+        };
+
+        let texture = self.device.create_texture(&TextureDescriptor {
+            label: Some(path),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8UnormSrgb,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST, // texture_binding = use in shaders, copy_dst = copy data to texture
+            view_formats: &[],
+        });
+
+        self.queue.write_texture(
+            TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            &image_rgba,
+            TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            size,
+        );
+
+        let view = texture.create_view(&TextureViewDescriptor::default());
+
+        Ok(Texture {
+            size,
+            data: texture,
+            view,
+        })
+    }
+
+    pub(crate) fn create_shader(&self, path: &str, global_layout: &BindGroupLayout, material_layout: &BindGroupLayout) -> Result<Shader, CreateShaderError> {
+        let src = fs::read_to_string(env!("OUT_DIR").to_owned() + path)?;
+        let shader = self.device.create_shader_module(ShaderModuleDescriptor {
+            label: Some(path),
+            source: ShaderSource::Wgsl(src.into()),
+        });
+
+        let pipeline = self.create_render_pipeline(&shader, [global_layout, material_layout]);
+
+        Ok(Shader {
+            module: shader,
+            pipeline,
+            global_layout: global_layout.clone(),
+            material_layout: material_layout.clone(),
+        })
+    }
+
+    pub(crate) fn create_render_pipeline(&self, shader: &ShaderModule, layouts: [&BindGroupLayout; 2]) -> RenderPipeline {
+        let render_pipeline_layout = self.device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: None,
+            bind_group_layouts: &layouts,
+            push_constant_ranges: &[],
+        });
+
+        let render_pipeline = self.device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: None,
+            layout: Some(&render_pipeline_layout),
+            vertex: VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                buffers: &[Vertex::desc()],
+                compilation_options: PipelineCompilationOptions::default(),
+            },
+            fragment: Some(FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(ColorTargetState {
+                    format: self.config.format,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                })],
+                compilation_options: PipelineCompilationOptions::default(),
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
+                unclipped_depth: false,
+                polygon_mode: PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        render_pipeline
     }
 }

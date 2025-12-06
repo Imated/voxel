@@ -38,7 +38,7 @@ fn load_shaders(#[resource] shaders: &mut Shaders, #[resource] renderer: &mut Re
 #[system]
 fn load_textures(#[resource] textures: &mut Textures, #[resource] renderer: &mut Renderer) {
     let atlas = renderer
-        .load_texture("/res/textures/atlas.png")
+        .create_texture("/res/textures/atlas.png")
         .unwrap_or_else(|err| {
             fatal!("Failed to load texture atlas: {}", err);
         });

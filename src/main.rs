@@ -130,7 +130,7 @@ impl App {
                 &shaders
                     .get(ShaderType::Opaque as u32)
                     .unwrap()
-                    .bind_group_layouts[1],
+                    .material_layout,
             );
         materials.add(
             MaterialType::BlockOpaque as u32,
@@ -140,7 +140,7 @@ impl App {
             },
         );
 
-        let mesh = renderer.create_mesh::<Vertex, u16>(TRIANGLE_VERTICES, TRIANGLE_INDICES, 0);
+        let mesh = renderer.create_mesh(TRIANGLE_VERTICES, TRIANGLE_INDICES, 0);
         meshes.add(MeshType::Triangle as u32, mesh);
 
         Ok(())

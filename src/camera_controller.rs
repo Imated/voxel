@@ -1,5 +1,5 @@
 use crate::rendering::camera::Camera;
-use glam::{IVec2, Vec2};
+use glam::IVec2;
 use winit::keyboard::KeyCode;
 
 pub struct CameraController {

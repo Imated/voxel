@@ -5,6 +5,7 @@ use wgpu::{
     Device, Extent3d, Origin3d, Queue, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
     TextureDimension, TextureFormat, TextureUsages, TextureView,
 };
+use crate::rendering::wgpu_context::WGPUContext;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TextureId(pub u32);
@@ -36,20 +37,20 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(device: &Device, queue: &Queue, path: &str) -> anyhow::Result<Self> {
+    pub fn new(context: &WGPUContext, path: &str) -> anyhow::Result<Self> {
         let image = ImageReader::open(env!("CARGO_MANIFEST_DIR").to_owned() + path)?.decode()?;
         let image_rgba = image.to_rgba8();
 
         use image::GenericImageView;
-        let dimensions = image.dimensions();
+        let (width, height) = image.dimensions();
 
         let size = Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
+            width,
+            height,
             depth_or_array_layers: 1, // 1 layer for 2d texture
         };
 
-        let texture = device.create_texture(&TextureDescriptor {
+        let texture = context.device.create_texture(&TextureDescriptor {
             label: Some(path),
             size,
             mip_level_count: 1,
@@ -60,7 +61,7 @@ impl Texture {
             view_formats: &[],
         });
 
-        queue.write_texture(
+        context.queue.write_texture(
             TexelCopyTextureInfo {
                 texture: &texture,
                 mip_level: 0,
@@ -70,8 +71,8 @@ impl Texture {
             &image_rgba,
             TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
             },
             size,
         );

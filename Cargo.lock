@@ -2556,6 +2556,7 @@ dependencies = [
  "log",
  "pollster",
  "pretty_env_logger",
+ "thiserror 2.0.17",
  "wgpu",
  "winit",
 ]

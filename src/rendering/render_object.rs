@@ -13,5 +13,5 @@ pub struct RenderObject {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PassType {
     Opaque,
-    Transparent
+    Transparent,
 }

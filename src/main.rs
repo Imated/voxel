@@ -1,16 +1,20 @@
+mod camera_controller;
 mod macros;
 mod rendering;
 mod startup;
-mod camera_controller;
 
 use crate::TextureType::Atlas;
+use crate::camera_controller::CameraController;
 use crate::rendering::material::{Material, Materials};
 use crate::rendering::mesh::Meshes;
+use crate::rendering::render_object::PassType::{Opaque, Transparent};
 use crate::rendering::render_object::RenderObject;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::Shaders;
 use crate::rendering::texture::Textures;
+use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::vertex::Vertex;
+use crate::startup::launch_startup_systems;
 use legion::{Resources, World};
 use log::*;
 use std::process::abort;
@@ -23,10 +27,6 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use crate::camera_controller::CameraController;
-use crate::rendering::bind_groups::bind_group_builder::BindGroupBuilder;
-use crate::rendering::render_object::PassType::{Opaque, Transparent};
-use crate::startup::launch_startup_systems;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
@@ -82,7 +82,7 @@ struct App {
     world: World,
     last_frame_time: Instant,
     frame_count: u64,
-    cam_controller: CameraController
+    cam_controller: CameraController,
 }
 
 impl App {
@@ -123,13 +123,22 @@ impl App {
 
         let default_shader = shaders.get(ShaderType::Opaque as u32).unwrap();
         let default_material_bind_group = BindGroupBuilder::new()
-            .with_texture2d(&textures.get(Atlas as u32).unwrap().view).
-            with_sampler(&renderer)
-            .build(&renderer, &shaders.get(ShaderType::Opaque as u32).unwrap().bind_group_layouts[1]);
-        materials.add(MaterialType::BlockOpaque as u32, Material {
-            shader: default_shader.clone(),
-            bind_group: default_material_bind_group,
-        });
+            .with_texture2d(&textures.get(Atlas as u32).unwrap().view)
+            .with_sampler(&renderer)
+            .build(
+                &renderer.context(),
+                &shaders
+                    .get(ShaderType::Opaque as u32)
+                    .unwrap()
+                    .bind_group_layouts[1],
+            );
+        materials.add(
+            MaterialType::BlockOpaque as u32,
+            Material {
+                shader: default_shader.clone(),
+                bind_group: default_material_bind_group,
+            },
+        );
 
         let mesh = renderer.create_mesh::<Vertex, u16>(TRIANGLE_VERTICES, TRIANGLE_INDICES, 0);
         meshes.add(MeshType::Triangle as u32, mesh);

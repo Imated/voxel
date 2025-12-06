@@ -1,5 +1,8 @@
 use crate::rendering::render_object::{PassType, RenderObject};
-use wgpu::{BindGroup, Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, TextureView};
+use wgpu::{
+    BindGroup, Color, CommandEncoder, IndexFormat, LoadOp, Operations, RenderPassColorAttachment,
+    RenderPassDescriptor, StoreOp, TextureView,
+};
 
 pub struct FrameData<'a> {
     pub color: &'a TextureView,

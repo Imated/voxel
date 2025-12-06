@@ -1,5 +1,9 @@
-use wgpu::{BindGroupLayout, BindGroupLayoutEntry, BindingType, SamplerBindingType, ShaderStages, TextureSampleType, TextureViewDimension};
 use crate::rendering::renderer::Renderer;
+use crate::rendering::wgpu_context::WGPUContext;
+use wgpu::{
+    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
+    BufferBindingType, SamplerBindingType, ShaderStages, TextureSampleType, TextureViewDimension,
+};
 
 pub struct BindGroupLayoutBuilder {
     pub(crate) entries: Vec<BindGroupLayoutEntry>,
@@ -7,9 +11,7 @@ pub struct BindGroupLayoutBuilder {
 
 impl BindGroupLayoutBuilder {
     pub fn new() -> Self {
-        Self {
-            entries: vec![],
-        }
+        Self { entries: vec![] }
     }
 
     pub fn with_texture2d(mut self, visibility: ShaderStages) -> Self {
@@ -38,7 +40,27 @@ impl BindGroupLayoutBuilder {
         self
     }
 
-    pub fn build(self, renderer: &Renderer) -> BindGroupLayout {
-        renderer.create_bind_group_layout(self.entries)
+    pub fn with_buffer(mut self, visibility: ShaderStages, buffer_type: BufferBindingType) -> Self {
+        self.entries.push(BindGroupLayoutEntry {
+            binding: self.entries.len() as u32,
+            visibility,
+            ty: BindingType::Buffer {
+                ty: buffer_type,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        });
+
+        self
+    }
+
+    pub fn build(self, context: &WGPUContext) -> BindGroupLayout {
+        context
+            .device
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: None,
+                entries: &self.entries,
+            })
     }
 }

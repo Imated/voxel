@@ -8,6 +8,7 @@ use wgpu::{
     RenderPipelineDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource,
     SurfaceConfiguration, VertexState,
 };
+use crate::rendering::wgpu_context::WGPUContext;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ShaderId(pub u32);
@@ -42,23 +43,22 @@ pub struct Shader {
 
 impl Shader {
     pub fn new(
-        device: &Device,
-        config: &SurfaceConfiguration,
+        context: &WGPUContext,
         path: &str,
         layouts: [&BindGroupLayout; 2],
     ) -> anyhow::Result<Self> {
         let src = fs::read_to_string(env!("OUT_DIR").to_owned() + path)?;
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
+        let shader = context.device.create_shader_module(ShaderModuleDescriptor {
             label: Some(path),
             source: ShaderSource::Wgsl(src.into()),
         });
-        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let render_pipeline_layout = context.device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some(path),
             bind_group_layouts: &layouts,
             push_constant_ranges: &[],
         });
 
-        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+        let render_pipeline = context.device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some(path),
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
@@ -71,7 +71,7 @@ impl Shader {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
-                    format: config.format,
+                    format: context.config.format,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 })],
@@ -100,10 +100,7 @@ impl Shader {
             module: shader,
             layout: render_pipeline_layout,
             pipeline: render_pipeline,
-            bind_group_layouts: [
-                layouts[0].clone(),
-                layouts[1].clone(),
-            ],
+            bind_group_layouts: [layouts[0].clone(), layouts[1].clone()],
         })
     }
 }

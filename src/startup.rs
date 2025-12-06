@@ -1,15 +1,15 @@
+use crate::TextureType::Atlas;
 use crate::abort;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::{Shader, Shaders};
+use crate::rendering::texture::Textures;
+use crate::rendering::utils::bind_group_layout_builder;
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::{ShaderType, fatal};
-use legion::{Schedule, system, World, Resources};
+use legion::{Resources, Schedule, World, system};
 use wgpu::{
     BindGroupLayoutEntry, BindingType, ShaderStages, TextureSampleType, TextureViewDimension,
 };
-use crate::rendering::texture::Textures;
-use crate::TextureType::Atlas;
-use crate::rendering::bind_groups::bind_group_layout_builder;
-use crate::rendering::bind_groups::bind_group_layout_builder::BindGroupLayoutBuilder;
 
 pub fn launch_startup_systems(mut world: &mut World, mut resources: &mut Resources) {
     let mut startup_schedule = Schedule::builder()
@@ -25,7 +25,7 @@ fn load_shaders(#[resource] shaders: &mut Shaders, #[resource] renderer: &mut Re
     let default_shader_layout = BindGroupLayoutBuilder::new()
         .with_texture2d(ShaderStages::FRAGMENT)
         .with_sampler(ShaderStages::FRAGMENT)
-        .build(&renderer);
+        .build(renderer.context());
 
     let default_shader = renderer
         .create_shader("/res/shaders/default.wgsl", default_shader_layout)

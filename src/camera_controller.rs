@@ -1,6 +1,6 @@
+use crate::rendering::camera::Camera;
 use glam::{IVec2, Vec2};
 use winit::keyboard::KeyCode;
-use crate::rendering::camera::Camera;
 
 pub struct CameraController {
     speed: f32,
@@ -11,7 +11,7 @@ impl CameraController {
     pub fn new(speed: f32) -> Self {
         Self {
             speed,
-            direction: IVec2::ZERO
+            direction: IVec2::ZERO,
         }
     }
 
@@ -39,7 +39,7 @@ impl CameraController {
 
     pub fn update_camera(&self, camera: &mut Camera) {
         let forward = camera.target - camera.eye;
-        let forward_normalized  = forward.normalize();
+        let forward_normalized = forward.normalize();
         let forward_magnitude = forward.length();
 
         if forward_magnitude > self.speed {
@@ -50,6 +50,8 @@ impl CameraController {
         let forward = camera.target - camera.eye;
         let forward_magnitude = forward.length();
 
-        camera.eye = camera.target - (forward + right * self.speed * self.direction.x as f32).normalize() * forward_magnitude;
+        camera.eye = camera.target
+            - (forward + right * self.speed * self.direction.x as f32).normalize()
+                * forward_magnitude;
     }
 }

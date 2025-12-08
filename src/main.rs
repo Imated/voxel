@@ -1,32 +1,29 @@
 mod camera_controller;
 mod macros;
 mod rendering;
-mod startup;
 
-use crate::TextureType::Atlas;
 use crate::camera_controller::CameraController;
-use crate::rendering::material::{Material, Materials};
-use crate::rendering::mesh::Meshes;
+use crate::rendering::material::Material;
+use crate::rendering::mesh::Mesh;
 use crate::rendering::render_object::PassType::{Opaque, Transparent};
 use crate::rendering::render_object::RenderObject;
 use crate::rendering::renderer::Renderer;
-use crate::rendering::shader::Shaders;
-use crate::rendering::texture::Textures;
+use crate::rendering::shader::Shader;
+use crate::rendering::texture::Texture;
 use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::vertex::Vertex;
-use crate::startup::launch_startup_systems;
-use legion::{Resources, World};
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use wgpu::SurfaceError;
+use wgpu::{ShaderStages, SurfaceError};
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
@@ -57,42 +54,30 @@ const TRIANGLE_VERTICES: &[Vertex] = &[
 
 const TRIANGLE_INDICES: &[u16] = &[0, 4, 5, 1, 3, 4, 2, 5, 3];
 
-#[repr(u32)]
-pub enum ShaderType {
-    Opaque = 0,
-}
-
-#[repr(u32)]
-pub enum MeshType {
-    Triangle = 0,
-}
-
-#[repr(u32)]
-pub enum MaterialType {
-    BlockOpaque = 0,
-}
-
-#[repr(u32)]
-pub enum TextureType {
-    Atlas = 0,
-}
-
 struct App {
-    resources: Resources,
-    world: World,
     last_frame_time: Instant,
     frame_count: u64,
     cam_controller: CameraController,
+
+    renderer: Option<Renderer>,
+
+    atlas: Option<Texture>,
+    default_opaque_shader: Option<Shader>,
+    default_opaque: Option<Material>,
+    test_mesh: Option<Mesh>,
 }
 
 impl App {
     pub fn new(_event_loop: &EventLoop<()>) -> Self {
         Self {
-            resources: Resources::default(),
-            world: World::default(),
             last_frame_time: Instant::now(),
             frame_count: 0,
             cam_controller: CameraController::new(0.002),
+            renderer: None,
+            atlas: None,
+            default_opaque_shader: None,
+            default_opaque: None,
+            test_mesh: None,
         }
     }
 }
@@ -115,51 +100,59 @@ impl App {
     }
 
     pub fn load_assets(&mut self) -> anyhow::Result<()> {
-        let shaders = self.resources.get_mut::<Shaders>().unwrap();
-        let mut materials = self.resources.get_mut::<Materials>().unwrap();
-        let textures = self.resources.get_mut::<Textures>().unwrap();
-        let mut meshes = self.resources.get_mut::<Meshes>().unwrap();
-        let renderer = self.resources.get::<Renderer>().unwrap();
+        let renderer = self.renderer.as_mut().unwrap();
 
-        let default_shader = shaders.get(ShaderType::Opaque as u32).unwrap();
+        let atlas = renderer
+            .create_texture("/res/textures/atlas.png")
+            .unwrap_or_else(|err| {
+                fatal!("Failed to load texture atlas: {}", err);
+            });
+
+        self.atlas = Some(atlas);
+
+        let default_shader_layout = BindGroupLayoutBuilder::new()
+            .with_texture2d(ShaderStages::FRAGMENT)
+            .with_sampler(ShaderStages::FRAGMENT)
+            .build(renderer.context());
+
+        let default_shader = renderer
+            .create_shader("/res/shaders/default.wgsl", default_shader_layout)
+            .unwrap_or_else(|err| {
+                fatal!("Failed to load default shader: {}", err);
+            });
+
+        self.default_opaque_shader = Some(default_shader);
+
         let default_material_bind_group = BindGroupBuilder::new()
-            .with_texture2d(&textures.get(Atlas as u32).unwrap().view)
+            .with_texture2d(&self.atlas.as_ref().unwrap().view)
             .with_sampler(&renderer)
             .build(
                 &renderer.context(),
-                &shaders
-                    .get(ShaderType::Opaque as u32)
-                    .unwrap()
-                    .material_layout,
+                &self.default_opaque_shader.as_ref().unwrap().material_layout,
             );
-        materials.add(
-            MaterialType::BlockOpaque as u32,
-            Material {
-                shader: default_shader.clone(),
-                bind_group: default_material_bind_group,
-            },
-        );
+
+        let default_opaque = Material {
+            shader: self.default_opaque_shader.as_ref().unwrap().clone(),
+            bind_group: default_material_bind_group,
+        };
+
+        self.default_opaque = Some(default_opaque);
 
         let mesh = renderer.create_mesh(TRIANGLE_VERTICES, TRIANGLE_INDICES, 0);
-        meshes.add(MeshType::Triangle as u32, mesh);
+        self.test_mesh = Some(mesh);
 
         Ok(())
     }
 
     pub fn render(&mut self) {
-        let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
-        let meshes = self.resources.get::<Meshes>().unwrap();
-        let materials = self.resources.get::<Materials>().unwrap();
+        let mut renderer = self.renderer.as_mut().unwrap();
 
         self.cam_controller.update_camera(&mut renderer.camera);
         renderer.update_scene_data();
 
         renderer.push_object(RenderObject {
-            mesh: meshes.get(MeshType::Triangle as u32).unwrap().clone(),
-            material: materials
-                .get(MaterialType::BlockOpaque as u32)
-                .unwrap()
-                .clone(),
+            mesh: self.test_mesh.as_ref().unwrap().clone(),
+            material: self.default_opaque.as_ref().unwrap().clone(),
             model_bind_group: None,
             pass: Opaque,
         });
@@ -202,14 +195,7 @@ impl ApplicationHandler for App {
         );
         let renderer = pollster::block_on(Renderer::new(window))
             .unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
-
-        self.resources.insert(renderer);
-        self.resources.insert(Meshes::new());
-        self.resources.insert(Materials::new());
-        self.resources.insert(Shaders::new());
-        self.resources.insert(Textures::new());
-
-        launch_startup_systems(&mut self.world, &mut self.resources);
+        self.renderer = Some(renderer);
 
         self.load_assets()
             .unwrap_or_else(|err| fatal!("Failed to load assets! Error: {:?}", err));
@@ -224,7 +210,7 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
+                let mut renderer = self.renderer.as_mut().unwrap();
                 renderer.resize(size.width, size.height);
             }
             WindowEvent::RedrawRequested => self.render(),

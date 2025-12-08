@@ -7,19 +7,16 @@ use crate::rendering::texture::Texture;
 use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::utils::sampler_builder::SamplerBuilder;
-use crate::rendering::vertex::Vertex;
 use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
-use bytemuck::{Pod, Zeroable, cast_slice};
+use bytemuck::{cast_slice, Pod, Zeroable};
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
+use wgpu::hal::DynDevice;
 use wgpu::AddressMode::ClampToEdge;
 use wgpu::BufferBindingType::Uniform;
 use wgpu::FilterMode::Nearest;
-use wgpu::hal::DynDevice;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Sampler,
+    BindGroup, BindGroupLayout, Buffer, BufferUsages, Sampler,
     ShaderStages, SurfaceError, TextureViewDescriptor,
 };
 use winit::window::Window;
@@ -187,12 +184,8 @@ impl Renderer {
         V: Pod + Zeroable,
         I: Pod + Zeroable,
     {
-        let vertex_buffer = self
-            .context
-            .create_buffer(vertices, BufferUsages::VERTEX);
-        let index_buffer = self
-            .context
-            .create_buffer(indices, BufferUsages::INDEX);
+        let vertex_buffer = self.context.create_buffer(vertices, BufferUsages::VERTEX);
+        let index_buffer = self.context.create_buffer(indices, BufferUsages::INDEX);
         let num_indices = indices.len() as u32;
 
         Mesh {

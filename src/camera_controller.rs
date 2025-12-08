@@ -18,7 +18,7 @@ impl CameraController {
     pub fn handle_key(&mut self, code: KeyCode, is_pressed: bool) -> bool {
         match code {
             KeyCode::KeyW | KeyCode::ArrowUp => {
-                self.direction.y = i32::from(is_pressed);
+                self.direction.y = is_pressed.into();
                 true
             }
             KeyCode::KeyA | KeyCode::ArrowLeft => {

@@ -10,7 +10,7 @@ use std::{fs, io};
 use thiserror::Error;
 use wgpu::MemoryHints::Performance;
 use wgpu::PowerPreference::HighPerformance;
-use wgpu::PresentMode::Mailbox;
+use wgpu::PresentMode::{Fifo, Mailbox};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState,
@@ -28,11 +28,11 @@ use winit::window::Window;
 #[derive(Error, Debug)]
 pub enum CreateWGPUContextError {
     #[error("Failed to create window surface due to {0:?}.")]
-    CreateSurfaceError(#[from] CreateSurfaceError),
+    CreateSurface(#[from] CreateSurfaceError),
     #[error("Failed to request a viable adapter due to {0:?}.")]
-    RequestAdapterError(#[from] RequestAdapterError),
+    RequestAdapter(#[from] RequestAdapterError),
     #[error("Failed to request a viable device due to {0:?}.")]
-    RequestDeviceError(#[from] RequestDeviceError),
+    RequestDevice(#[from] RequestDeviceError),
 }
 
 #[derive(Error, Debug)]
@@ -101,7 +101,7 @@ impl WGPUContext {
     ) -> SurfaceConfiguration {
         let size = window.inner_size();
 
-        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_caps = surface.get_capabilities(adapter);
 
         let surface_format = surface_caps
             .formats
@@ -110,22 +110,23 @@ impl WGPUContext {
             .copied()
             .unwrap_or(surface_caps.formats[0]);
 
-        let config = SurfaceConfiguration {
+        SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: surface_caps // Mailbox if supported, otherwise FIFO (guaranteed to be supported)
+            present_mode: if surface_caps // Mailbox if supported, otherwise FIFO (guaranteed to be supported)
                 .present_modes
                 .contains(&Mailbox)
-                .then(|| Mailbox)
-                .unwrap_or(PresentMode::Fifo),
+            {
+                Mailbox
+            } else {
+                Fifo
+            },
             desired_maximum_frame_latency: 2,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
-        };
-
-        config
+        }
     }
 
     pub fn create_buffer<T>(&self, contents: &[T], usage: BufferUsages) -> Buffer
@@ -223,19 +224,18 @@ impl WGPUContext {
                     push_constant_ranges: &[],
                 });
 
-        let render_pipeline = self
-            .device
+        self.device
             .create_render_pipeline(&RenderPipelineDescriptor {
                 label: None,
                 layout: Some(&render_pipeline_layout),
                 vertex: VertexState {
-                    module: &shader,
+                    module: shader,
                     entry_point: Some("vs_main"),
                     buffers: &[Vertex::desc()],
                     compilation_options: PipelineCompilationOptions::default(),
                 },
                 fragment: Some(FragmentState {
-                    module: &shader,
+                    module: shader,
                     entry_point: Some("fs_main"),
                     targets: &[Some(ColorTargetState {
                         format: self.config.format,
@@ -261,8 +261,6 @@ impl WGPUContext {
                 },
                 multiview: None,
                 cache: None,
-            });
-
-        render_pipeline
+            })
     }
 }

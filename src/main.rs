@@ -5,12 +5,13 @@ mod rendering;
 use crate::camera_controller::CameraController;
 use crate::rendering::material::Material;
 use crate::rendering::mesh::Mesh;
-use crate::rendering::render_object::PassType::{Opaque, Transparent};
+use crate::rendering::render_object::PassType::Opaque;
 use crate::rendering::render_object::RenderObject;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
 use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::vertex::Vertex;
 use log::*;
 use std::process::abort;
@@ -23,7 +24,6 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 
 const TRIANGLE_VERTICES: &[Vertex] = &[
     Vertex {
@@ -125,9 +125,9 @@ impl App {
 
         let default_material_bind_group = BindGroupBuilder::new()
             .with_texture2d(&self.atlas.as_ref().unwrap().view)
-            .with_sampler(&renderer)
+            .with_sampler(renderer)
             .build(
-                &renderer.context(),
+                renderer.context(),
                 &self.default_opaque_shader.as_ref().unwrap().material_layout,
             );
 
@@ -145,7 +145,7 @@ impl App {
     }
 
     pub fn render(&mut self) {
-        let mut renderer = self.renderer.as_mut().unwrap();
+        let renderer = self.renderer.as_mut().unwrap();
 
         self.cam_controller.update_camera(&mut renderer.camera);
         renderer.update_scene_data();
@@ -210,7 +210,7 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                let mut renderer = self.renderer.as_mut().unwrap();
+                let renderer = self.renderer.as_mut().unwrap();
                 renderer.resize(size.width, size.height);
             }
             WindowEvent::RedrawRequested => self.render(),

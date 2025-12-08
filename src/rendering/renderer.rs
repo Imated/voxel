@@ -8,22 +8,21 @@ use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::utils::sampler_builder::SamplerBuilder;
 use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
-use bytemuck::{cast_slice, Pod, Zeroable};
+use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
-use wgpu::hal::DynDevice;
 use wgpu::AddressMode::ClampToEdge;
 use wgpu::BufferBindingType::Uniform;
 use wgpu::FilterMode::Nearest;
 use wgpu::{
-    BindGroup, BindGroupLayout, Buffer, BufferUsages, Sampler,
-    ShaderStages, SurfaceError, TextureViewDescriptor,
+    BindGroup, BindGroupLayout, Buffer, BufferUsages, Sampler, ShaderStages, SurfaceError,
+    TextureViewDescriptor,
 };
 use winit::window::Window;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
-struct SceneData {
+pub struct SceneData {
     view_proj: Mat4,
 }
 
@@ -109,7 +108,7 @@ impl Renderer {
         self.context.config.width = width;
         self.context.config.height = height;
 
-        if width <= 0 && height <= 0 {
+        if width == 0 && height == 0 {
             return;
         }
 
@@ -124,8 +123,8 @@ impl Renderer {
     }
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
-        let mut context = &mut self.context;
-        if (context.config.width <= 0 && context.config.height <= 0)
+        let context = &self.context;
+        if (context.config.width == 0 && context.config.height == 0)
             || !context.is_surface_configured
         {
             return Ok(());
@@ -142,7 +141,7 @@ impl Renderer {
 
         let frame_data = FrameData {
             color: &view,
-            scene_bind_group: (&self.scene_bind_group).clone(),
+            scene_bind_group: self.scene_bind_group.clone(),
         };
 
         let main_objects: Vec<&RenderObject> = self

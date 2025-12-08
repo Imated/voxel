@@ -25,7 +25,7 @@ impl MainRenderPass {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Main Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
-                view: &data.color,
+                view: data.color,
                 depth_slice: None,
                 resolve_target: None,
                 ops: Operations {

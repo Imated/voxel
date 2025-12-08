@@ -12,12 +12,13 @@ use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
 use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
-use crate::rendering::vertex::Vertex;
+use crate::rendering::vertex::{InstanceData, Vertex};
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use wgpu::{ShaderStages, SurfaceError};
+use glam::{Mat4, Quat, Vec3, Vec4};
+use wgpu::{BufferUsages, ShaderStages, SurfaceError};
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
@@ -150,11 +151,28 @@ impl App {
         self.cam_controller.update_camera(&mut renderer.camera);
         renderer.update_scene_data();
 
+        const NUM_INSTANCES_PER_ROW: u32 = 10;
+        const INSTANCE_DISPLACEMENT: Vec3 = Vec3::new(NUM_INSTANCES_PER_ROW as f32 * 0.5, 0.0, NUM_INSTANCES_PER_ROW as f32 * 0.5);
+
+        let instances: Vec<InstanceData> = (0..NUM_INSTANCES_PER_ROW).flat_map(|z| {
+            (0..NUM_INSTANCES_PER_ROW).map(move |x| {
+                let position = Vec3::new(x as f32, 0.0, z as f32);
+                let rotation = Quat::from_axis_angle(Vec3::Z, 45f32.to_degrees());
+                let model = Mat4::from_translation(position) * Mat4::from_quat(rotation);
+
+                InstanceData {
+                    model
+                }
+            })
+        }).collect();
+
         renderer.push_object(RenderObject {
             mesh: self.test_mesh.as_ref().unwrap().clone(),
             material: self.default_opaque.as_ref().unwrap().clone(),
             model_bind_group: None,
             pass: Opaque,
+            instances: renderer.context().create_buffer(&instances, BufferUsages::VERTEX),
+            num_instances: instances.len() as u32,
         });
 
         match renderer.render() {

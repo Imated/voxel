@@ -4,6 +4,13 @@ struct VertexInput {
     @location(1) tex_coords: vec2<f32>,
 }
 
+struct InstanceInput {
+    @location(5) model_0: vec4<f32>,
+    @location(6) model_1: vec4<f32>,
+    @location(7) model_2: vec4<f32>,
+    @location(8) model_3: vec4<f32>,
+}
+
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
@@ -16,10 +23,16 @@ struct SceneData {
 @group(0) @binding(0) var<uniform> scene_data: SceneData;
 
 @vertex
-fn vs_main(in: VertexInput) -> VertexOutput {
+fn vs_main(vert: VertexInput, instance: InstanceInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = scene_data.view_proj *  vec4<f32>(in.position, 1.0);
-    out.tex_coords = in.tex_coords;
+    let model = mat4x4<f32>(
+        instance.model_0,
+        instance.model_1,
+        instance.model_2,
+        instance.model_3,
+    );
+    out.clip_position = scene_data.view_proj * model * vec4<f32>(vert.position, 1.0);
+    out.tex_coords = vert.tex_coords;
     return out;
 }
 

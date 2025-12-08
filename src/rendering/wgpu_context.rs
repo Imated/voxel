@@ -1,6 +1,6 @@
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
-use crate::rendering::vertex::Vertex;
+use crate::rendering::vertex::{InstanceData, Vertex};
 use bytemuck::checked::cast_slice;
 use bytemuck::{Pod, Zeroable};
 use image::{ImageError, ImageReader};
@@ -231,7 +231,7 @@ impl WGPUContext {
                 vertex: VertexState {
                     module: shader,
                     entry_point: Some("vs_main"),
-                    buffers: &[Vertex::desc()],
+                    buffers: &[Vertex::desc(), InstanceData::desc()],
                     compilation_options: PipelineCompilationOptions::default(),
                 },
                 fragment: Some(FragmentState {

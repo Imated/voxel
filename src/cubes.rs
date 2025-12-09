@@ -1,3 +1,4 @@
+use std::time::Instant;
 use crate::rendering::material::Material;
 use crate::rendering::render_object::{PassType, RenderObject};
 use crate::rendering::renderer::Renderer;
@@ -7,6 +8,7 @@ use glam::{Mat4, Quat, Vec3};
 pub struct Cubes {
     render_object: RenderObject,
     instances: Vec<InstanceData>,
+    start_time: Instant,
 }
 
 impl Cubes {
@@ -46,7 +48,7 @@ impl Cubes {
         let instances: Vec<InstanceData> = (0..Self::NUM_INSTANCES_PER_ROW).flat_map(|z| {
             (0..Self::NUM_INSTANCES_PER_ROW).map(move |x| {
                 let position = Vec3::new(x as f32, 0.0, z as f32) - Self::INSTANCE_DISPLACEMENT;
-                let rotation = Quat::from_axis_angle(Vec3::Z, 45f32.to_degrees());
+                let rotation = Quat::from_axis_angle(Vec3::Z, 0f32.to_degrees());
                 let model = Mat4::from_translation(position) * Mat4::from_quat(rotation);
 
                 InstanceData {
@@ -66,10 +68,26 @@ impl Cubes {
                 instances: instance_buffer,
             },
             instances,
+            start_time: Instant::now(),
         }
     }
 
-    pub fn render(&self, renderer: &mut Renderer) {
+    pub fn render(&mut self, renderer: &mut Renderer) {
+        let time = Instant::now() - self.start_time;
+        self.start_time = Instant::now();
+        let rotation = Quat::from_axis_angle(Vec3::Y, time.as_secs_f32().to_degrees() * 0.01f32);
+        self.instances = self.instances.iter().map(|x| {
+            InstanceData {
+                model: x.model * Mat4::from_quat(rotation),
+            }
+        }).collect();
+
+        self.update_instances(renderer);
+
         renderer.push_object(&self.render_object);
+    }
+
+    fn update_instances(&self, renderer: &Renderer) {
+        renderer.update_instance_buffer_with(&self.render_object.instances, &self.instances);
     }
 }

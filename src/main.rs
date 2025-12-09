@@ -119,7 +119,8 @@ impl App {
         self.cam_controller.update_camera(&mut renderer.camera);
         renderer.update_scene_data();
 
-        self.cubes.as_ref().unwrap().render(renderer);
+        let mut cubes = self.cubes.as_mut().unwrap();
+        cubes.render(renderer);
 
         match renderer.render() {
             Ok(_) => {}

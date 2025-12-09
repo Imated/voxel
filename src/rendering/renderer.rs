@@ -107,7 +107,7 @@ impl Renderer {
 
     pub fn create_instance_buffer(&self, data: &Vec<InstanceData>) -> InstanceBuffer {
         InstanceBuffer {
-            buffer: self.create_buffer(data, BufferUsages::VERTEX),
+            buffer: self.create_buffer(data, BufferUsages::VERTEX | BufferUsages::COPY_DST),
             len: data.len() as u32,
         }
     }

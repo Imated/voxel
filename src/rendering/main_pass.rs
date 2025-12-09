@@ -59,8 +59,6 @@ impl MainRenderPass {
 
             render_pass.draw_indexed(mesh.start_index..mesh.num_indices, 0, 0..object.instances.len);
         }
-
-        drop(render_pass);
     }
 
     pub fn pass_type(&self) -> PassType {

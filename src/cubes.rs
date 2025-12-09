@@ -45,7 +45,7 @@ impl Cubes {
     pub fn new(renderer: &Renderer, material: &Material) -> Self {
         let instances: Vec<InstanceData> = (0..Self::NUM_INSTANCES_PER_ROW).flat_map(|z| {
             (0..Self::NUM_INSTANCES_PER_ROW).map(move |x| {
-                let position = Vec3::new(x as f32, 0.0, z as f32);
+                let position = Vec3::new(x as f32, 0.0, z as f32) - Self::INSTANCE_DISPLACEMENT;
                 let rotation = Quat::from_axis_angle(Vec3::Z, 45f32.to_degrees());
                 let model = Mat4::from_translation(position) * Mat4::from_quat(rotation);
 

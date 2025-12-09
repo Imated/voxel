@@ -8,15 +8,15 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::{fs, io};
 use thiserror::Error;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::MemoryHints::Performance;
 use wgpu::PowerPreference::HighPerformance;
 use wgpu::PresentMode::{Fifo, Mailbox};
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState,
     ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features,
     FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d,
-    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
     PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError,
     RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource,
     Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,

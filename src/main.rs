@@ -1,6 +1,7 @@
 mod camera_controller;
 mod macros;
 mod rendering;
+mod cubes;
 
 use crate::camera_controller::CameraController;
 use crate::rendering::material::Material;
@@ -24,36 +25,8 @@ use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::{Window, WindowId};
-
-const TRIANGLE_VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0.0, 0.625, 0.0],
-        tex_coords: [1.0, 0.0],
-    },
-    Vertex {
-        position: [-0.5, -0.5, 0.0],
-        tex_coords: [0.0, 1.0],
-    },
-    Vertex {
-        position: [0.5, -0.5, 0.0],
-        tex_coords: [0.0, 0.0],
-    },
-    Vertex {
-        position: [0.0, -0.5, 0.0],
-        tex_coords: [0.0, 0.5],
-    },
-    Vertex {
-        position: [-0.25, 0.125, 0.0],
-        tex_coords: [0.5, 0.5],
-    },
-    Vertex {
-        position: [0.25, 0.125, 0.0],
-        tex_coords: [0.0, 0.5],
-    },
-];
-
-const TRIANGLE_INDICES: &[u16] = &[0, 4, 5, 1, 3, 4, 2, 5, 3];
+use winit::window::{CursorGrabMode, Window, WindowId};
+use crate::cubes::Cubes;
 
 struct App {
     last_frame_time: Instant,
@@ -65,7 +38,8 @@ struct App {
     atlas: Option<Texture>,
     default_opaque_shader: Option<Shader>,
     default_opaque: Option<Material>,
-    test_mesh: Option<Mesh>,
+
+    cubes: Option<Cubes>,
 }
 
 impl App {
@@ -78,7 +52,7 @@ impl App {
             atlas: None,
             default_opaque_shader: None,
             default_opaque: None,
-            test_mesh: None,
+            cubes: None,
         }
     }
 }
@@ -137,10 +111,9 @@ impl App {
             bind_group: default_material_bind_group,
         };
 
-        self.default_opaque = Some(default_opaque);
+        self.cubes = Some(Cubes::new(self.renderer.as_ref().unwrap(), &default_opaque));
 
-        let mesh = renderer.create_mesh(TRIANGLE_VERTICES, TRIANGLE_INDICES, 0);
-        self.test_mesh = Some(mesh);
+        self.default_opaque = Some(default_opaque);
 
         Ok(())
     }
@@ -151,29 +124,7 @@ impl App {
         self.cam_controller.update_camera(&mut renderer.camera);
         renderer.update_scene_data();
 
-        const NUM_INSTANCES_PER_ROW: u32 = 10;
-        const INSTANCE_DISPLACEMENT: Vec3 = Vec3::new(NUM_INSTANCES_PER_ROW as f32 * 0.5, 0.0, NUM_INSTANCES_PER_ROW as f32 * 0.5);
-
-        let instances: Vec<InstanceData> = (0..NUM_INSTANCES_PER_ROW).flat_map(|z| {
-            (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-                let position = Vec3::new(x as f32, 0.0, z as f32);
-                let rotation = Quat::from_axis_angle(Vec3::Z, 45f32.to_degrees());
-                let model = Mat4::from_translation(position) * Mat4::from_quat(rotation);
-
-                InstanceData {
-                    model
-                }
-            })
-        }).collect();
-
-        renderer.push_object(RenderObject {
-            mesh: self.test_mesh.as_ref().unwrap().clone(),
-            material: self.default_opaque.as_ref().unwrap().clone(),
-            model_bind_group: None,
-            pass: Opaque,
-            instances: renderer.context().create_buffer(&instances, BufferUsages::VERTEX),
-            num_instances: instances.len() as u32,
-        });
+        self.cubes.as_ref().unwrap().render(renderer);
 
         match renderer.render() {
             Ok(_) => {}
@@ -211,6 +162,8 @@ impl ApplicationHandler for App {
                 .create_window(window_attributes)
                 .unwrap_or_else(|err| fatal!("Failed to create window! Error: {:?}", err)),
         );
+        window.set_cursor_grab(CursorGrabMode::Confined).unwrap_or_else(|e| error!("Failed to set cursor grab mode!"));
+        window.set_cursor_visible(false);
         let renderer = pollster::block_on(Renderer::new(window))
             .unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
         self.renderer = Some(renderer);

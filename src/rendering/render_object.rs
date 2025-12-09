@@ -1,18 +1,22 @@
 use crate::rendering::material::Material;
 use crate::rendering::mesh::Mesh;
-use wgpu::{BindGroup, Buffer};
+use wgpu::Buffer;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderObject {
     pub mesh: Mesh,
     pub material: Material,
-    pub model_bind_group: Option<BindGroup>,
     pub pass: PassType,
-    pub instances: Buffer,
-    pub num_instances: u32,
+    pub instances: InstanceBuffer,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InstanceBuffer {
+    pub buffer: Buffer,
+    pub len: u32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PassType {
     Opaque,
     Transparent,

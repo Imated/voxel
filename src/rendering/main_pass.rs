@@ -54,10 +54,10 @@ impl MainRenderPass {
             render_pass.set_bind_group(1, &material.bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-            render_pass.set_vertex_buffer(1, object.instances.slice(..));
+            render_pass.set_vertex_buffer(1, object.instances.buffer.slice(..));
             render_pass.set_index_buffer(mesh.indices.slice(..), IndexFormat::Uint16);
 
-            render_pass.draw_indexed(mesh.start_index..mesh.num_indices, 0, 0..object.num_instances);
+            render_pass.draw_indexed(mesh.start_index..mesh.num_indices, 0, 0..object.instances.len);
         }
 
         drop(render_pass);

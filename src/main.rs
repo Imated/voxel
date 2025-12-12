@@ -1,15 +1,14 @@
 mod camera_controller;
+mod cubes;
 mod macros;
 mod rendering;
-mod cubes;
 
 use crate::camera_controller::CameraController;
+use crate::cubes::Cubes;
 use crate::rendering::material::Material;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
-use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
-use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
@@ -21,7 +20,8 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowId};
-use crate::cubes::Cubes;
+use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 
 struct App {
     last_frame_time: Instant,
@@ -158,7 +158,9 @@ impl ApplicationHandler for App {
                 .create_window(window_attributes)
                 .unwrap_or_else(|err| fatal!("Failed to create window! Error: {:?}", err)),
         );
-        window.set_cursor_grab(CursorGrabMode::Confined).unwrap_or_else(|_| error!("Failed to set cursor grab mode!"));
+        window
+            .set_cursor_grab(CursorGrabMode::Confined)
+            .unwrap_or_else(|_| error!("Failed to set cursor grab mode!"));
         window.set_cursor_visible(false);
         let renderer = pollster::block_on(Renderer::new(window))
             .unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));

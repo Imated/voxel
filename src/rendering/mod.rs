@@ -1,3 +1,4 @@
+pub mod buffer;
 pub mod camera;
 pub mod main_pass;
 pub mod material;
@@ -6,6 +7,6 @@ pub mod render_object;
 pub mod renderer;
 pub mod shader;
 pub mod texture;
-pub mod utils;
 pub mod vertex;
+pub mod utils;
 mod wgpu_context;

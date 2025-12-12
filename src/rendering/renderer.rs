@@ -1,12 +1,8 @@
 use crate::rendering::camera::Camera;
 use crate::rendering::main_pass::{FrameData, MainRenderPass};
-use crate::rendering::mesh::Mesh;
 use crate::rendering::render_object::*;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
-use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
-use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
-use crate::rendering::utils::sampler_builder::SamplerBuilder;
 use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
 use bytemuck::{Pod, Zeroable, cast_slice};
 use glam::{Mat4, Vec3};
@@ -19,7 +15,9 @@ use wgpu::{
     TextureViewDescriptor,
 };
 use winit::window::Window;
-use crate::rendering::vertex::InstanceData;
+use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
+use crate::rendering::utils::sampler_builder::SamplerBuilder;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
@@ -105,17 +103,6 @@ impl Renderer {
             .write_buffer(&self.scene_data_buffer, 0, cast_slice(&[scene_data]));
     }
 
-    pub fn create_instance_buffer(&self, data: &Vec<InstanceData>) -> InstanceBuffer {
-        InstanceBuffer {
-            buffer: self.create_buffer(data, BufferUsages::VERTEX | BufferUsages::COPY_DST),
-            len: data.len() as u32,
-        }
-    }
-
-    pub fn update_instance_buffer_with(&self, buffer: &InstanceBuffer, data: &Vec<InstanceData>) {
-        self.context.queue.write_buffer(&buffer.buffer, 0, cast_slice(data))
-    }
-
     pub fn resize(&mut self, width: u32, height: u32) {
         self.context.config.width = width;
         self.context.config.height = height;
@@ -177,37 +164,17 @@ impl Renderer {
         self.render_objects.push(obj.clone());
     }
 
-    pub fn create_buffer<T>(&self, contents: &[T], usage: BufferUsages) -> Buffer
-    where
-        T: Pod + Zeroable,
-    {
-        self.context.create_buffer(contents, usage)
-    }
-
-    pub fn create_shader(&self, path: &str, material_layout: BindGroupLayout) -> Result<Shader, CreateShaderError> {
+    pub fn create_shader(
+        &self,
+        path: &str,
+        material_layout: BindGroupLayout,
+    ) -> Result<Shader, CreateShaderError> {
         self.context
             .create_shader(path, &self.scene_bind_group_layout, &material_layout)
     }
 
     pub fn create_texture(&self, path: &str) -> Result<Texture, CreateTextureError> {
         self.context.create_texture(path)
-    }
-
-    pub fn create_mesh<V, I>(&self, vertices: &[V], indices: &[I], start_index: u32) -> Mesh
-    where
-        V: Pod + Zeroable,
-        I: Pod + Zeroable,
-    {
-        let vertex_buffer = self.context.create_buffer(vertices, BufferUsages::VERTEX);
-        let index_buffer = self.context.create_buffer(indices, BufferUsages::INDEX);
-        let num_indices = indices.len() as u32;
-
-        Mesh {
-            vertices: vertex_buffer,
-            indices: index_buffer,
-            num_indices,
-            start_index,
-        }
     }
 
     pub fn universal_sampler(&self) -> &Sampler {

@@ -1,19 +1,46 @@
-use std::time::Instant;
 use crate::rendering::material::Material;
 use crate::rendering::render_object::{PassType, RenderObject};
 use crate::rendering::renderer::Renderer;
-use crate::rendering::vertex::{InstanceData, Vertex};
 use glam::{Mat4, Quat, Vec3};
+use std::time::Instant;
+use bytemuck::{Pod, Zeroable};
+use wgpu::{vertex_attr_array, BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode};
+use crate::rendering::buffer::Buffer;
+use crate::rendering::mesh::Mesh;
+use crate::rendering::vertex::Vertex;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Pod, Zeroable)]
+pub struct CubeData {
+    pub model: Mat4,
+}
+
+impl CubeData {
+    pub(crate) fn desc() -> VertexBufferLayout<'static> {
+        const ATTRIBS: [VertexAttribute; 4] =
+            vertex_attr_array![5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4];
+
+        VertexBufferLayout {
+            array_stride: size_of::<CubeData>() as BufferAddress,
+            step_mode: VertexStepMode::Instance,
+            attributes: &ATTRIBS,
+        }
+    }
+}
 
 pub struct Cubes {
     render_object: RenderObject,
-    instances: Vec<InstanceData>,
+    instances: Buffer<CubeData>,
     start_time: Instant,
 }
 
 impl Cubes {
     const NUM_INSTANCES_PER_ROW: u32 = 10;
-    const INSTANCE_DISPLACEMENT: Vec3 = Vec3::new(Self::NUM_INSTANCES_PER_ROW as f32 * 0.5, 0.0, Self::NUM_INSTANCES_PER_ROW as f32 * 0.5);
+    const INSTANCE_DISPLACEMENT: Vec3 = Vec3::new(
+        Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
+        0.0,
+        Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
+    );
 
     const TRIANGLE_VERTICES: [Vertex; 6] = [
         Vertex {
@@ -45,29 +72,36 @@ impl Cubes {
     const TRIANGLE_INDICES: [u16; 9] = [0, 4, 5, 1, 3, 4, 2, 5, 3];
 
     pub fn new(renderer: &Renderer, material: &Material) -> Self {
-        let instances: Vec<InstanceData> = (0..Self::NUM_INSTANCES_PER_ROW).flat_map(|z| {
-            (0..Self::NUM_INSTANCES_PER_ROW).map(move |x| {
-                let position = Vec3::new(x as f32, 0.0, z as f32) - Self::INSTANCE_DISPLACEMENT;
-                let rotation = Quat::from_axis_angle(Vec3::Z, 0f32.to_degrees());
-                let model = Mat4::from_translation(position) * Mat4::from_quat(rotation);
+        let instances: Vec<CubeData> = (0..Self::NUM_INSTANCES_PER_ROW)
+            .flat_map(|z| {
+                (0..Self::NUM_INSTANCES_PER_ROW).map(move |x| {
+                    let position = Vec3::new(x as f32, 0.0, z as f32) - Self::INSTANCE_DISPLACEMENT;
+                    let rotation = Quat::from_axis_angle(Vec3::Z, 0f32.to_degrees());
+                    let model = Mat4::from_translation(position) * Mat4::from_quat(rotation);
 
-                InstanceData {
-                    model
-                }
+                    CubeData { model }
+                })
             })
-        }).collect();
+            .collect();
 
-        let mesh = renderer.create_mesh(&Self::TRIANGLE_VERTICES, &Self::TRIANGLE_INDICES, 0);
-        let instance_buffer = renderer.create_instance_buffer(&instances);
+        let mesh = Mesh {
+            vertices: Buffer::new_vertex(&renderer.context(), Some(&Self::TRIANGLE_VERTICES)),
+            indices: Buffer::new_index(&renderer.context(), Some(&Self::TRIANGLE_INDICES)),
+            num_indices: Self::TRIANGLE_INDICES.len() as u32,
+            start_index: 0,
+        };
+
+        let instance_buffer = Buffer::new_instance(&renderer.context(), Some(&instances));
 
         Self {
             render_object: RenderObject {
                 mesh,
                 material: material.clone(),
                 pass: PassType::Opaque,
-                instances: instance_buffer,
+                instances: instance_buffer.buffer().clone(),
+                instances_len: instance_buffer.len(),
             },
-            instances,
+            instances: instance_buffer,
             start_time: Instant::now(),
         }
     }
@@ -75,19 +109,18 @@ impl Cubes {
     pub fn render(&mut self, renderer: &mut Renderer) {
         let time = Instant::now() - self.start_time;
         self.start_time = Instant::now();
-        let rotation = Quat::from_axis_angle(Vec3::Y, time.as_secs_f32().to_degrees() * 0.01f32);
-        self.instances = self.instances.iter().map(|x| {
-            InstanceData {
+        let rotation = Quat::from_axis_angle(Vec3::Y, time.as_secs_f32());
+        let new_data = self
+            .instances
+            .content()
+            .iter()
+            .map(|x| CubeData {
                 model: x.model * Mat4::from_quat(rotation),
-            }
-        }).collect();
+            })
+            .collect();
 
-        self.update_instances(renderer);
+        self.instances.upload(&renderer.context(), new_data);
 
         renderer.push_object(&self.render_object);
-    }
-
-    fn update_instances(&self, renderer: &Renderer) {
-        renderer.update_instance_buffer_with(&self.render_object.instances, &self.instances);
     }
 }

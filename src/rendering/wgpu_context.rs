@@ -1,6 +1,6 @@
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
-use crate::rendering::vertex::{InstanceData, Vertex};
+use crate::rendering::vertex::Vertex;
 use bytemuck::checked::cast_slice;
 use bytemuck::{Pod, Zeroable};
 use image::{ImageError, ImageReader};
@@ -8,22 +8,13 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::{fs, io};
 use thiserror::Error;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::MemoryHints::Performance;
 use wgpu::PowerPreference::HighPerformance;
 use wgpu::PresentMode::{Fifo, Mailbox};
-use wgpu::{
-    Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState,
-    ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features,
-    FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d,
-    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
-    PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError,
-    RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource,
-    Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
-    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
-    Trace, VertexState,
-};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features, FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError, RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource, Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor, Trace, VertexState};
 use winit::window::Window;
+use crate::cubes::CubeData;
 
 #[derive(Error, Debug)]
 pub enum CreateWGPUContextError {
@@ -54,7 +45,7 @@ pub struct WGPUContext {
     pub(crate) queue: Queue,
     pub(crate) config: SurfaceConfiguration,
     pub(crate) surface: Surface<'static>,
-    pub(crate) is_surface_configured: bool,
+    pub(crate) is_surface_configured: bool, // MacOS/Metal support
 }
 
 impl WGPUContext {
@@ -231,7 +222,7 @@ impl WGPUContext {
                 vertex: VertexState {
                     module: shader,
                     entry_point: Some("vs_main"),
-                    buffers: &[Vertex::desc(), InstanceData::desc()],
+                    buffers: &[Vertex::desc(), CubeData::desc()],
                     compilation_options: PipelineCompilationOptions::default(),
                 },
                 fragment: Some(FragmentState {

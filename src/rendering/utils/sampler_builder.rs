@@ -1,5 +1,5 @@
 use crate::rendering::wgpu_context::WGPUContext;
-use wgpu::{AddressMode, FilterMode, Sampler, SamplerDescriptor};
+use wgpu::{AddressMode, FilterMode, Label, Sampler, SamplerDescriptor};
 
 pub struct SamplerBuilder<'a> {
     desc: SamplerDescriptor<'a>,
@@ -28,7 +28,8 @@ impl<'a> SamplerBuilder<'a> {
         self
     }
 
-    pub fn build(self, context: &WGPUContext) -> Sampler {
+    pub fn build(mut self, context: &WGPUContext, label: Label<'a>) -> Sampler {
+        self.desc.label = label;
         context.device.create_sampler(&self.desc)
     }
 }

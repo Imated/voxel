@@ -6,16 +6,12 @@ use wgpu::{
 
 pub struct FrameData<'a> {
     pub color: &'a TextureView,
-    pub scene_bind_group: BindGroup,
+    pub global_bind_group: &'a BindGroup,
 }
 
-pub struct MainRenderPass {}
+pub struct MainRenderPass;
 
 impl MainRenderPass {
-    pub fn new() -> Self {
-        Self {}
-    }
-
     pub fn record(
         &mut self,
         encoder: &mut CommandEncoder,
@@ -50,7 +46,7 @@ impl MainRenderPass {
 
             render_pass.set_pipeline(&shader.pipeline);
 
-            render_pass.set_bind_group(0, &data.scene_bind_group, &[]);
+            render_pass.set_bind_group(0, data.global_bind_group, &[]);
             render_pass.set_bind_group(1, &material.bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, mesh.vertices.buffer().slice(..));

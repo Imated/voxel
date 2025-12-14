@@ -1,3 +1,4 @@
+use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3, Vec4};
 
 #[rustfmt::skip]
@@ -7,6 +8,12 @@ pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols(
     Vec4::new(0.0, 0.0, 0.5, 0.0),
     Vec4::new(0.0, 0.0, 0.5, 1.0),
 );
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub struct CameraBufferContext {
+    view_proj: Mat4,
+}
 
 pub struct Camera {
     pub eye: Vec3,
@@ -24,5 +31,11 @@ impl Camera {
         let proj = Mat4::perspective_rh(self.fov, self.aspect, self.near_clip, self.far_clip);
 
         OPENGL_TO_WGPU_MATRIX * proj * view
+    }
+
+    pub fn fill_buffer_context(&self) -> CameraBufferContext {
+        CameraBufferContext {
+            view_proj: self.build_view_projection_matrix(),
+        }
     }
 }

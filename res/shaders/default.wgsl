@@ -16,11 +16,17 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
 };
 
-struct SceneData {
+struct GlobalBufferContext {
+    camera: CameraBufferContext,
+}
+
+struct CameraBufferContext {
     view_proj: mat4x4<f32>,
 }
 
-@group(0) @binding(0) var<uniform> scene_data: SceneData;
+@group(0) @binding(0) var<uniform> global_context: GlobalBufferContext;
+@group(0) @binding(1) var trilinear_sampler: sampler;
+@group(0) @binding(2) var point_sampler: sampler;
 
 @vertex
 fn vs_main(vert: VertexInput, instance: InstanceInput) -> VertexOutput {
@@ -31,14 +37,14 @@ fn vs_main(vert: VertexInput, instance: InstanceInput) -> VertexOutput {
         instance.model_2,
         instance.model_3,
     );
-    out.clip_position = scene_data.view_proj * model * vec4<f32>(vert.position, 1.0);
+    out.clip_position = global_context.camera.view_proj * model * vec4<f32>(vert.position, 1.0);
     out.tex_coords = vert.tex_coords;
     return out;
 }
 
 // Fragment Shader
 @group(1) @binding(0) var albedo_texture: texture_2d<f32>;
-@group(1) @binding(1) var universal_sampler: sampler;
+//@group(1) @binding(1) var universal_sampler: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {

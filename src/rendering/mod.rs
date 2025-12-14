@@ -10,3 +10,4 @@ pub mod texture;
 pub mod vertex;
 pub mod utils;
 mod wgpu_context;
+pub mod global_bindings;

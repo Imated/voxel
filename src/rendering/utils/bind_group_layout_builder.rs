@@ -1,8 +1,5 @@
 use crate::rendering::wgpu_context::WGPUContext;
-use wgpu::{
-    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
-    BufferBindingType, SamplerBindingType, ShaderStages, TextureSampleType, TextureViewDimension,
-};
+use wgpu::{BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, Label, SamplerBindingType, ShaderStages, TextureSampleType, TextureViewDimension};
 
 pub struct BindGroupLayoutBuilder {
     pub(crate) entries: Vec<BindGroupLayoutEntry>,
@@ -54,11 +51,11 @@ impl BindGroupLayoutBuilder {
         self
     }
 
-    pub fn build(self, context: &WGPUContext) -> BindGroupLayout {
+    pub fn build(self, context: &WGPUContext, label: Label) -> BindGroupLayout {
         context
             .device
             .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: None,
+                label,
                 entries: &self.entries,
             })
     }

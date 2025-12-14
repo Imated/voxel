@@ -3,27 +3,19 @@ use crate::rendering::main_pass::{FrameData, MainRenderPass};
 use crate::rendering::render_object::*;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
+use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
-use bytemuck::{Pod, Zeroable, cast_slice};
+use bytemuck::cast_slice;
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
-use wgpu::AddressMode::ClampToEdge;
 use wgpu::BufferBindingType::Uniform;
-use wgpu::FilterMode::Nearest;
 use wgpu::{
-    BindGroup, BindGroupLayout, Buffer, BufferUsages, Sampler, ShaderStages, SurfaceError,
+    BindGroup, BindGroupLayout, Buffer, BufferUsages, ShaderStages, SurfaceError,
     TextureViewDescriptor,
 };
 use winit::window::Window;
-use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
-use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
-use crate::rendering::utils::sampler_builder::SamplerBuilder;
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Pod, Zeroable)]
-pub struct SceneData {
-    view_proj: Mat4,
-}
+use crate::rendering::global_bindings::GlobalBindings;
 
 pub struct Renderer {
     window: Arc<Window>,
@@ -31,26 +23,16 @@ pub struct Renderer {
     context: WGPUContext,
 
     main_pass: MainRenderPass,
-    sampler: Sampler,
 
     render_objects: Vec<RenderObject>,
     pub camera: Camera,
-
-    scene_bind_group: BindGroup,
-    scene_bind_group_layout: BindGroupLayout,
-    scene_data_buffer: Buffer,
 }
 
 impl Renderer {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let context = WGPUContext::new(window.clone()).await?;
 
-        let sampler = SamplerBuilder::new()
-            .with_mode(ClampToEdge)
-            .with_filtering(Nearest)
-            .build(&context);
-
-        let main_pass = MainRenderPass::new();
+        let main_pass = MainRenderPass;
         let camera = Camera {
             eye: (0.0, 1.0, 2.0).into(),
             target: (0.0, 0.0, 0.0).into(),
@@ -61,46 +43,13 @@ impl Renderer {
             far_clip: 100.0,
         };
 
-        let scene_data = SceneData {
-            view_proj: Mat4::IDENTITY,
-        };
-
-        let scene_data_buffer = context.create_buffer(
-            &[scene_data],
-            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-        );
-
-        let scene_bind_group_layout = BindGroupLayoutBuilder::new()
-            .with_buffer(ShaderStages::VERTEX_FRAGMENT, Uniform)
-            .build(&context);
-
-        let scene_bind_group = BindGroupBuilder::new()
-            .with_buffer(&scene_data_buffer)
-            .build(&context, &scene_bind_group_layout);
-
         Ok(Self {
             window,
             context,
             main_pass,
-            sampler,
             render_objects: vec![],
             camera,
-            scene_bind_group,
-            scene_bind_group_layout,
-            scene_data_buffer,
         })
-    }
-
-    pub fn update_scene_data(&self) {
-        self.update_scene_data_with(SceneData {
-            view_proj: self.camera.build_view_projection_matrix(),
-        });
-    }
-
-    pub fn update_scene_data_with(&self, scene_data: SceneData) {
-        self.context
-            .queue
-            .write_buffer(&self.scene_data_buffer, 0, cast_slice(&[scene_data]));
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -116,12 +65,10 @@ impl Renderer {
             .configure(&self.context.device, &self.context.config);
 
         self.camera.aspect = width as f32 / height as f32;
-        self.update_scene_data();
-
         self.context.is_surface_configured = true;
     }
 
-    pub fn render(&mut self) -> Result<(), SurfaceError> {
+    pub fn render(&mut self, global_bindings: &GlobalBindings) -> Result<(), SurfaceError> {
         let context = &self.context;
         if (context.config.width == 0 && context.config.height == 0)
             || !context.is_surface_configured
@@ -140,7 +87,7 @@ impl Renderer {
 
         let frame_data = FrameData {
             color: &view,
-            scene_bind_group: self.scene_bind_group.clone(),
+            global_bind_group: global_bindings.bind_group(),
         };
 
         let main_objects: Vec<&RenderObject> = self
@@ -168,17 +115,14 @@ impl Renderer {
         &self,
         path: &str,
         material_layout: BindGroupLayout,
+        global_bindings: &GlobalBindings
     ) -> Result<Shader, CreateShaderError> {
         self.context
-            .create_shader(path, &self.scene_bind_group_layout, &material_layout)
+            .create_shader(path, &global_bindings.bind_group_layout(), &material_layout)
     }
 
     pub fn create_texture(&self, path: &str) -> Result<Texture, CreateTextureError> {
         self.context.create_texture(path)
-    }
-
-    pub fn universal_sampler(&self) -> &Sampler {
-        &self.sampler
     }
 
     pub fn context(&self) -> &WGPUContext {

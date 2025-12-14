@@ -20,6 +20,7 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowId};
+use crate::rendering::global_bindings::{GlobalBindings, GlobalBufferContext};
 use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 
@@ -29,6 +30,7 @@ struct App {
     cam_controller: CameraController,
 
     renderer: Option<Renderer>,
+    global_bindings: Option<GlobalBindings>,
 
     atlas: Option<Texture>,
     default_opaque_shader: Option<Shader>,
@@ -44,6 +46,7 @@ impl App {
             frame_count: 0,
             cam_controller: CameraController::new(0.002),
             renderer: None,
+            global_bindings: None,
             atlas: None,
             default_opaque_shader: None,
             default_opaque: None,
@@ -82,11 +85,10 @@ impl App {
 
         let default_shader_layout = BindGroupLayoutBuilder::new()
             .with_texture2d(ShaderStages::FRAGMENT)
-            .with_sampler(ShaderStages::FRAGMENT)
-            .build(renderer.context());
+            .build(renderer.context(), Some("Default shader layout"));
 
         let default_shader = renderer
-            .create_shader("/res/shaders/default.wgsl", default_shader_layout)
+            .create_shader("/res/shaders/default.wgsl", default_shader_layout, self.global_bindings.as_ref().unwrap())
             .unwrap_or_else(|err| {
                 fatal!("Failed to load default shader: {}", err);
             });
@@ -95,10 +97,10 @@ impl App {
 
         let default_material_bind_group = BindGroupBuilder::new()
             .with_texture2d(&self.atlas.as_ref().unwrap().view)
-            .with_sampler(renderer)
             .build(
                 renderer.context(),
                 &self.default_opaque_shader.as_ref().unwrap().material_layout,
+                Some("Default Material Bind Group")
             );
 
         let default_opaque = Material {
@@ -117,12 +119,14 @@ impl App {
         let renderer = self.renderer.as_mut().unwrap();
 
         self.cam_controller.update_camera(&mut renderer.camera);
-        renderer.update_scene_data();
+        let mut global_buffer = self.global_bindings.as_mut().unwrap().global_buffer();
+        global_buffer.fill(&renderer.camera);
+        self.global_bindings.as_mut().unwrap().update_global_buffer(renderer.context(), global_buffer);
 
         let mut cubes = self.cubes.as_mut().unwrap();
         cubes.render(renderer);
 
-        match renderer.render() {
+        match renderer.render(self.global_bindings.as_ref().unwrap()) {
             Ok(_) => {}
             Err(SurfaceError::Lost) => {}
             Err(SurfaceError::Outdated) => {}
@@ -164,6 +168,8 @@ impl ApplicationHandler for App {
         window.set_cursor_visible(false);
         let renderer = pollster::block_on(Renderer::new(window))
             .unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
+
+        self.global_bindings = Some(GlobalBindings::new(&renderer.context(), GlobalBufferContext::new(&renderer.camera)));
         self.renderer = Some(renderer);
 
         self.load_assets()

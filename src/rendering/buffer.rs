@@ -13,7 +13,7 @@ where
     Content: Pod + Zeroable,
 {
     buffer: wgpu::Buffer,
-    content: Vec<Content>,
+    _content_type: PhantomData<Content>,
     len: u32,
 }
 impl<Content> Buffer<Content>
@@ -40,7 +40,7 @@ where
 
         Self {
             buffer,
-            content: Vec::from(contents),
+            _content_type: PhantomData,
             len: contents.len() as u32,
         }
     }
@@ -61,24 +61,15 @@ where
         Self::new(context, content, BufferUsages::INDEX)
     }
 
-    pub fn upload(&mut self, context: &WGPUContext, content: Vec<Content>) {
-        self.content = content;
-        context.queue.write_buffer(&self.buffer, 0, cast_slice(&self.content));
+    pub fn upload(&mut self, context: &WGPUContext, content: &[Content]) {
+        context.queue.write_buffer(&self.buffer, 0, cast_slice(content));
     }
 
     pub fn buffer(&self) -> &wgpu::Buffer {
         &self.buffer
     }
 
-    pub fn binding_resource(&self) -> BindingResource {
-        self.buffer.as_entire_binding()
-    }
-
     pub fn len(&self) -> u32 {
         self.len
-    }
-
-    pub fn content(&mut self) -> &mut [Content] {
-        &mut self.content
     }
 }

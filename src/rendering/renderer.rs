@@ -1,21 +1,17 @@
 use crate::rendering::camera::Camera;
+use crate::rendering::global_bindings::GlobalBindings;
 use crate::rendering::main_pass::{FrameData, MainRenderPass};
 use crate::rendering::render_object::*;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
-use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
-use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
-use bytemuck::cast_slice;
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 use std::sync::Arc;
-use wgpu::BufferBindingType::Uniform;
 use wgpu::{
-    BindGroup, BindGroupLayout, Buffer, BufferUsages, ShaderStages, SurfaceError,
+    BindGroupLayout, SurfaceError,
     TextureViewDescriptor,
 };
 use winit::window::Window;
-use crate::rendering::global_bindings::GlobalBindings;
 
 pub struct Renderer {
     window: Arc<Window>,

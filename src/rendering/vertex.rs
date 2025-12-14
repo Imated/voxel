@@ -1,6 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use glam::Mat4;
-use wgpu::{BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode, vertex_attr_array};
+use wgpu::{vertex_attr_array, BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable, PartialOrd, PartialEq)]

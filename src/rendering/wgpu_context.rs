@@ -120,17 +120,6 @@ impl WGPUContext {
         }
     }
 
-    pub fn create_buffer<T>(&self, contents: &[T], usage: BufferUsages) -> Buffer
-    where
-        T: Pod + Zeroable,
-    {
-        self.device.create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: cast_slice(contents),
-            usage,
-        })
-    }
-
     pub(crate) fn create_texture(&self, path: &str) -> Result<Texture, CreateTextureError> {
         let image = ImageReader::open(env!("CARGO_MANIFEST_DIR").to_owned() + path)?.decode()?;
         let image_rgba = image.to_rgba8();

@@ -119,11 +119,9 @@ impl App {
         let renderer = self.renderer.as_mut().unwrap();
 
         self.cam_controller.update_camera(&mut renderer.camera);
-        let mut global_buffer = self.global_bindings.as_mut().unwrap().global_buffer();
-        global_buffer.fill(&renderer.camera);
-        self.global_bindings.as_mut().unwrap().update_global_buffer(renderer.context(), global_buffer);
+        self.global_bindings.as_mut().unwrap().update_global_buffer(renderer.context(), GlobalBufferContext::new(&renderer.camera));
 
-        let mut cubes = self.cubes.as_mut().unwrap();
+        let cubes = self.cubes.as_mut().unwrap();
         cubes.render(renderer);
 
         match renderer.render(self.global_bindings.as_ref().unwrap()) {

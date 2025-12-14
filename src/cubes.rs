@@ -30,7 +30,8 @@ impl CubeData {
 
 pub struct Cubes {
     render_object: RenderObject,
-    instances: Buffer<CubeData>,
+    instance_buffer: Buffer<CubeData>, // gpu side
+    instance_data: Vec<CubeData>, // cpu side
     start_time: Instant,
 }
 
@@ -101,25 +102,21 @@ impl Cubes {
                 instances: instance_buffer.buffer().clone(),
                 instances_len: instance_buffer.len(),
             },
-            instances: instance_buffer,
+            instance_buffer,
+            instance_data: instances,
             start_time: Instant::now(),
         }
     }
 
     pub fn render(&mut self, renderer: &mut Renderer) {
-        let time = Instant::now() - self.start_time;
+        let dt = (Instant::now() - self.start_time).as_secs_f32();
         self.start_time = Instant::now();
-        let rotation = Quat::from_axis_angle(Vec3::Y, time.as_secs_f32());
-        let new_data = self
-            .instances
-            .content()
-            .iter()
-            .map(|x| CubeData {
-                model: x.model * Mat4::from_quat(rotation),
-            })
-            .collect();
+        let rotation = Quat::from_axis_angle(Vec3::Y, dt * 2f32);
+        for instance in &mut self.instance_data {
+            instance.model *= Mat4::from_quat(rotation);
+        }
 
-        self.instances.upload(&renderer.context(), new_data);
+        self.instance_buffer.upload(&renderer.context(), &self.instance_data);
 
         renderer.push_object(&self.render_object);
     }

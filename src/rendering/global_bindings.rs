@@ -28,10 +28,6 @@ impl GlobalBufferContext {
             camera: camera.fill_buffer_context(),
         }
     }
-
-    pub fn fill(&mut self, camera: &Camera) {
-        self.camera = camera.fill_buffer_context();
-    }
 }
 
 impl GlobalBindings {
@@ -68,11 +64,7 @@ impl GlobalBindings {
     }
 
     pub fn update_global_buffer(&mut self, context: &WGPUContext, global_data: GlobalBufferContext) {
-        self.global_buffer.upload(context, vec![global_data]);
-    }
-
-    pub fn global_buffer(&mut self) -> GlobalBufferContext {
-        self.global_buffer.content()[0]
+        self.global_buffer.upload(context, &[global_data]);
     }
 
     pub fn bind_group(&self) -> &BindGroup {

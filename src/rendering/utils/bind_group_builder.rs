@@ -1,4 +1,3 @@
-use crate::rendering::renderer::Renderer;
 use crate::rendering::wgpu_context::WGPUContext;
 use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindingResource, Buffer, Label, Sampler, TextureView};
 

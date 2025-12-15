@@ -1,13 +1,13 @@
-use bytemuck::{Pod, Zeroable};
-use wgpu::{BindGroup, BindGroupLayout, BufferBindingType, ShaderStages};
-use wgpu::AddressMode::ClampToEdge;
-use wgpu::FilterMode::{Linear, Nearest};
 use crate::rendering::buffer::Buffer;
 use crate::rendering::camera::{Camera, CameraBufferContext};
 use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
 use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use crate::rendering::utils::sampler_builder::SamplerBuilder;
 use crate::rendering::wgpu_context::WGPUContext;
+use bytemuck::{Pod, Zeroable};
+use wgpu::AddressMode::ClampToEdge;
+use wgpu::FilterMode::{Linear, Nearest};
+use wgpu::{BindGroup, BindGroupLayout, BufferBindingType, ShaderStages};
 
 // inspired by https://github.com/Wumpf/blub/blob/master/src/global_bindings.rs
 pub struct GlobalBindings {
@@ -19,7 +19,7 @@ pub struct GlobalBindings {
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 pub struct GlobalBufferContext {
-    camera: CameraBufferContext
+    camera: CameraBufferContext,
 }
 
 impl GlobalBufferContext {
@@ -51,10 +51,10 @@ impl GlobalBindings {
         let global_buffer = Buffer::new_uniform(context, Some(&[global_data]));
 
         let bind_group = BindGroupBuilder::new()
-                .with_buffer(&global_buffer.buffer())
-                .with_sampler(&trilinear_sampler)
-                .with_sampler(&point_sampler)
-                .build(context, &layout, Some("Global Bind Group"));
+            .with_buffer(&global_buffer.buffer())
+            .with_sampler(&trilinear_sampler)
+            .with_sampler(&point_sampler)
+            .build(context, &layout, Some("Global Bind Group"));
 
         Self {
             layout,
@@ -63,7 +63,11 @@ impl GlobalBindings {
         }
     }
 
-    pub fn update_global_buffer(&mut self, context: &WGPUContext, global_data: GlobalBufferContext) {
+    pub fn update_global_buffer(
+        &mut self,
+        context: &WGPUContext,
+        global_data: GlobalBufferContext,
+    ) {
         self.global_buffer.upload(context, &[global_data]);
     }
 

@@ -1,5 +1,5 @@
 use crate::rendering::wgpu_context::WGPUContext;
-use bytemuck::{cast_slice, Pod, Zeroable};
+use bytemuck::{Pod, Zeroable, cast_slice};
 use std::any::type_name;
 use std::marker::PhantomData;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
@@ -46,11 +46,19 @@ where
     }
 
     pub fn new_uniform(context: &WGPUContext, content: Option<&[Content]>) -> Self {
-        Self::new(context, content, BufferUsages::UNIFORM | BufferUsages::COPY_DST)
+        Self::new(
+            context,
+            content,
+            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        )
     }
 
     pub fn new_instance(context: &WGPUContext, content: Option<&[Content]>) -> Self {
-        Self::new(context, content, BufferUsages::VERTEX | BufferUsages::COPY_DST)
+        Self::new(
+            context,
+            content,
+            BufferUsages::VERTEX | BufferUsages::COPY_DST,
+        )
     }
 
     pub fn new_vertex(context: &WGPUContext, content: Option<&[Content]>) -> Self {
@@ -62,7 +70,9 @@ where
     }
 
     pub fn upload(&mut self, context: &WGPUContext, content: &[Content]) {
-        context.queue.write_buffer(&self.buffer, 0, cast_slice(content));
+        context
+            .queue
+            .write_buffer(&self.buffer, 0, cast_slice(content));
     }
 
     pub fn buffer(&self) -> &wgpu::Buffer {

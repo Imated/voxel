@@ -7,10 +7,7 @@ use crate::rendering::texture::Texture;
 use crate::rendering::wgpu_context::{CreateShaderError, CreateTextureError, WGPUContext};
 use glam::Vec3;
 use std::sync::Arc;
-use wgpu::{
-    BindGroupLayout, SurfaceError,
-    TextureViewDescriptor,
-};
+use wgpu::{BindGroupLayout, SurfaceError, TextureViewDescriptor};
 use winit::window::Window;
 
 pub struct Renderer {
@@ -89,7 +86,7 @@ impl Renderer {
         let main_objects: Vec<&RenderObject> = self
             .render_objects
             .iter()
-            .filter(|obj| obj.pass == self.main_pass.pass_type())
+            .filter(|&obj| obj.pass == self.main_pass.pass_type())
             .collect(); // pass all non-transparent objects into the main pass.
 
         self.main_pass
@@ -111,7 +108,7 @@ impl Renderer {
         &self,
         path: &str,
         material_layout: BindGroupLayout,
-        global_bindings: &GlobalBindings
+        global_bindings: &GlobalBindings,
     ) -> Result<Shader, CreateShaderError> {
         self.context
             .create_shader(path, &global_bindings.bind_group_layout(), &material_layout)

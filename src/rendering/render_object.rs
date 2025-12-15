@@ -2,8 +2,7 @@ use crate::rendering::material::Material;
 use crate::rendering::mesh::Mesh;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct RenderObject
-{
+pub struct RenderObject {
     pub mesh: Mesh,
     pub material: Material,
     pub pass: PassType,

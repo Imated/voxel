@@ -1,5 +1,8 @@
 use crate::rendering::wgpu_context::WGPUContext;
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindingResource, Buffer, Label, Sampler, TextureView};
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindingResource, Buffer,
+    Label, Sampler, TextureView,
+};
 
 pub struct BindGroupBuilder<'a> {
     entries: Vec<BindGroupEntry<'a>>,

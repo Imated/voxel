@@ -1,3 +1,4 @@
+use crate::cubes::CubeData;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
 use crate::rendering::vertex::Vertex;
@@ -12,9 +13,18 @@ use wgpu::MemoryHints::Performance;
 use wgpu::PowerPreference::HighPerformance;
 use wgpu::PresentMode::{Fifo, Mailbox};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::{Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features, FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError, RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource, Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor, Trace, VertexState};
+use wgpu::{
+    Adapter, Backends, BindGroupLayout, BlendState, Buffer, BufferUsages, ColorTargetState,
+    ColorWrites, CreateSurfaceError, Device, DeviceDescriptor, Extent3d, Face, Features,
+    FragmentState, FrontFace, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
+    PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, RequestAdapterError,
+    RequestAdapterOptions, RequestDeviceError, ShaderModule, ShaderModuleDescriptor, ShaderSource,
+    Surface, SurfaceConfiguration, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
+    Trace, VertexState,
+};
 use winit::window::Window;
-use crate::cubes::CubeData;
 
 #[derive(Error, Debug)]
 pub enum CreateWGPUContextError {

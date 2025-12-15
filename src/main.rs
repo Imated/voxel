@@ -5,10 +5,13 @@ mod rendering;
 
 use crate::camera_controller::CameraController;
 use crate::cubes::Cubes;
+use crate::rendering::global_bindings::{GlobalBindings, GlobalBufferContext};
 use crate::rendering::material::Material;
 use crate::rendering::renderer::Renderer;
 use crate::rendering::shader::Shader;
 use crate::rendering::texture::Texture;
+use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
+use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 use log::*;
 use std::process::abort;
 use std::sync::Arc;
@@ -20,9 +23,6 @@ use winit::event::{DeviceId, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowId};
-use crate::rendering::global_bindings::{GlobalBindings, GlobalBufferContext};
-use crate::rendering::utils::bind_group_builder::BindGroupBuilder;
-use crate::rendering::utils::bind_group_layout_builder::BindGroupLayoutBuilder;
 
 struct App {
     last_frame_time: Instant,
@@ -88,7 +88,11 @@ impl App {
             .build(renderer.context(), Some("Default shader layout"));
 
         let default_shader = renderer
-            .create_shader("/res/shaders/default.wgsl", default_shader_layout, self.global_bindings.as_ref().unwrap())
+            .create_shader(
+                "/res/shaders/default.wgsl",
+                default_shader_layout,
+                self.global_bindings.as_ref().unwrap(),
+            )
             .unwrap_or_else(|err| {
                 fatal!("Failed to load default shader: {}", err);
             });
@@ -100,7 +104,7 @@ impl App {
             .build(
                 renderer.context(),
                 &self.default_opaque_shader.as_ref().unwrap().material_layout,
-                Some("Default Material Bind Group")
+                Some("Default Material Bind Group"),
             );
 
         let default_opaque = Material {
@@ -119,7 +123,10 @@ impl App {
         let renderer = self.renderer.as_mut().unwrap();
 
         self.cam_controller.update_camera(&mut renderer.camera);
-        self.global_bindings.as_mut().unwrap().update_global_buffer(renderer.context(), GlobalBufferContext::new(&renderer.camera));
+        self.global_bindings.as_mut().unwrap().update_global_buffer(
+            renderer.context(),
+            GlobalBufferContext::new(&renderer.camera),
+        );
 
         let cubes = self.cubes.as_mut().unwrap();
         cubes.render(renderer);
@@ -167,7 +174,10 @@ impl ApplicationHandler for App {
         let renderer = pollster::block_on(Renderer::new(window))
             .unwrap_or_else(|err| fatal!("Failed to create renderer! Error: {:?}", err));
 
-        self.global_bindings = Some(GlobalBindings::new(&renderer.context(), GlobalBufferContext::new(&renderer.camera)));
+        self.global_bindings = Some(GlobalBindings::new(
+            &renderer.context(),
+            GlobalBufferContext::new(&renderer.camera),
+        ));
         self.renderer = Some(renderer);
 
         self.load_assets()

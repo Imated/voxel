@@ -1,5 +1,6 @@
 pub mod buffer;
 pub mod camera;
+pub mod global_bindings;
 pub mod main_pass;
 pub mod material;
 pub mod mesh;
@@ -7,7 +8,6 @@ pub mod render_object;
 pub mod renderer;
 pub mod shader;
 pub mod texture;
-pub mod vertex;
 pub mod utils;
+pub mod vertex;
 mod wgpu_context;
-pub mod global_bindings;

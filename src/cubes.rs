@@ -1,13 +1,13 @@
+use crate::rendering::buffer::Buffer;
 use crate::rendering::material::Material;
+use crate::rendering::mesh::Mesh;
 use crate::rendering::render_object::{PassType, RenderObject};
 use crate::rendering::renderer::Renderer;
+use crate::rendering::vertex::Vertex;
+use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Quat, Vec3};
 use std::time::Instant;
-use bytemuck::{Pod, Zeroable};
-use wgpu::{vertex_attr_array, BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode};
-use crate::rendering::buffer::Buffer;
-use crate::rendering::mesh::Mesh;
-use crate::rendering::vertex::Vertex;
+use wgpu::{BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode, vertex_attr_array};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Pod, Zeroable)]
@@ -31,7 +31,7 @@ impl CubeData {
 pub struct Cubes {
     render_object: RenderObject,
     instance_buffer: Buffer<CubeData>, // gpu side
-    instance_data: Vec<CubeData>, // cpu side
+    instance_data: Vec<CubeData>,      // cpu side
     start_time: Instant,
 }
 
@@ -116,7 +116,8 @@ impl Cubes {
             instance.model *= Mat4::from_quat(rotation);
         }
 
-        self.instance_buffer.upload(&renderer.context(), &self.instance_data);
+        self.instance_buffer
+            .upload(&renderer.context(), &self.instance_data);
 
         renderer.push_object(&self.render_object);
     }
